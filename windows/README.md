@@ -1,5 +1,3 @@
-# Windows client
+# Jarvis Windows desktop client
 
-This branch is reserved for the genuine Windows desktop/host application. The API backend is not itself a desktop app or a Windows installer.
-
-Implementation requirements: a real desktop UI, configurable backend URL, authenticated pairing before phone-to-PC control, allow-listed commands, explicit consent for sensitive actions, visible audit history, and a clear kill switch. Never expose arbitrary shell execution to unauthenticated remote callers.
+Run on Windows with Python 3.11+: `python windows/jarvis_desktop.py`. Configure the reachable API URL in settings or `JARVIS_BASE_URL`. The CI workflow packages a Windows executable; the app requires a configured backend and provider. No arbitrary shell execution or phone-to-PC control is included yet.
