@@ -1,7 +1,9 @@
+from pathlib import Path
 from typing import Literal
 
 import httpx
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from jarvis_api.config import settings
@@ -75,3 +77,9 @@ async def chat(body: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=502, detail=f"AI provider returned HTTP {exc.response.status_code}.") from exc
     except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
         raise HTTPException(status_code=502, detail="AI provider response could not be processed.") from exc
+
+
+# Serve the bundled web UI from the same origin so API requests use the same backend.
+_WEB_DIR = Path(__file__).resolve().parent.parent / "web"
+if _WEB_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=_WEB_DIR, html=True), name="web")
