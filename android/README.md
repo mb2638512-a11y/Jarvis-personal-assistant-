@@ -1,5 +1,5 @@
-# Android client
+# Jarvis Android client
 
-The Android application source must be migrated or implemented here before a genuine APK can be released. The release workflow checks for Flutter (`pubspec.yaml`) or Gradle wrapper source before attempting an APK build. Do not publish a placeholder APK.
+Flutter chat source is in `lib/main.dart`. Default URL is Android emulator host `http://10.0.2.2:8000`; use Settings to configure a reachable server. Do not embed provider API keys.
 
-Expected integration: configurable HTTPS backend URL, real `/health` and `/api/chat` requests, secure token storage if authentication is introduced, clear permission prompts, and no API provider keys embedded in the APK.
+CI generates Android scaffolding with `flutter create --platforms=android .` if needed. APKs are CI artifacts; Play Store publication requires secure signing configuration.
