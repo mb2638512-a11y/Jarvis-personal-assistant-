@@ -4,7 +4,7 @@ import os
 import threading
 import tkinter as tk
 from tkinter import simpledialog
-from urllib.error import HTTPError, URLError, URLError as URLFailure
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 DEFAULT_URL = os.environ.get("JARVIS_BASE_URL", "http://127.0.0.1:8000")
@@ -55,7 +55,7 @@ class JarvisDesktop:
             try:
                 self.request_json("/health", timeout=5)
                 text = "Backend online · " + self.base_url
-            except (URLFailure, TimeoutError, ValueError, KeyError):
+            except (URLError, TimeoutError, ValueError, KeyError):
                 text = "Backend unreachable · Configure a reachable URL"
             self.root.after(0, lambda: self.status.configure(text=text))
         threading.Thread(target=worker, daemon=True).start()
