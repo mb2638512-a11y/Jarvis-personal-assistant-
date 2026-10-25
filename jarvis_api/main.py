@@ -4,7 +4,7 @@ from typing import Literal
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from jarvis_api.config import settings
 
@@ -13,6 +13,14 @@ app = FastAPI(title="Jarvis Personal Assistant API", version="0.1.0")
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=12000)
+
+    @field_validator("message")
+    @classmethod
+    def message_must_contain_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Message must contain non-whitespace text.")
+        return value
 
 
 class ChatResponse(BaseModel):
@@ -47,14 +55,21 @@ async def chat(body: ChatRequest) -> ChatResponse:
 
     base_url = settings.base_url.rstrip("/")
     if not base_url.startswith("https://") and not (
-        base_url.startswith("http://") and base_url.split("/")[2].split(":")[0] in {"localhost", "127.0.0.1"}
+        base_url.startswith("http://")
+        and base_url.split("/")[2].split(":")[0] in {"localhost", "127.0.0.1"}
     ):
-        raise HTTPException(status_code=500, detail="Provider URL must use HTTPS except for localhost.")
+        raise HTTPException(
+            status_code=500,
+            detail="Provider URL must use HTTPS except for localhost.",
+        )
 
     payload = {
         "model": settings.model,
         "messages": [
-            {"role": "system", "content": "You are Jarvis, a helpful personal assistant. Be honest about capabilities."},
+            {
+                "role": "system",
+                "content": "You are Jarvis, a helpful personal assistant. Be honest about capabilities.",
+            },
             {"role": "user", "content": body.message},
         ],
     }
@@ -62,7 +77,10 @@ async def chat(body: ChatRequest) -> ChatResponse:
         async with httpx.AsyncClient(timeout=settings.request_timeout_seconds) as client:
             response = await client.post(
                 f"{base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {settings.api_key}", "Content-Type": "application/json"},
+                headers={
+                    "Authorization": f"Bearer {settings.api_key}",
+                    "Content-Type": "application/json",
+                },
                 json=payload,
             )
             response.raise_for_status()
@@ -72,11 +90,19 @@ async def chat(body: ChatRequest) -> ChatResponse:
                 raise ValueError("Provider returned an empty response")
             return ChatResponse(reply=reply, provider="openai-compatible")
     except httpx.TimeoutException as exc:
-        raise HTTPException(status_code=504, detail="AI provider request timed out.") from exc
+        raise HTTPException(
+            status_code=504, detail="AI provider request timed out."
+        ) from exc
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=502, detail=f"AI provider returned HTTP {exc.response.status_code}.") from exc
+        raise HTTPException(
+            status_code=502,
+            detail=f"AI provider returned HTTP {exc.response.status_code}.",
+        ) from exc
     except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
-        raise HTTPException(status_code=502, detail="AI provider response could not be processed.") from exc
+        raise HTTPException(
+            status_code=502,
+            detail="AI provider response could not be processed.",
+        ) from exc
 
 
 # Serve the bundled web UI from the same origin so API requests use the same backend.
