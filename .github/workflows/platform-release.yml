@@ -28,7 +28,7 @@ jobs:
       - name: Package source
         shell: pwsh
         run: |
-          Compress-Archive -Path jarvis_api, tests, pyproject.toml, README.md, .env.example -DestinationPath Jarvis-Windows-Backend-Source.zip
+          Compress-Archive -Path jarvis_api, tests, web, pyproject.toml, README.md, .env.example -DestinationPath Jarvis-Windows-Backend-Source.zip
       - uses: actions/upload-artifact@v4
         with:
           name: Jarvis-Windows-Backend-Source
