@@ -35,6 +35,24 @@ jobs:
           path: Jarvis-Windows-Backend-Source.zip
           if-no-files-found: error
 
+  windows-desktop-build:
+    name: Build Windows desktop app
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build executable
+        run: |
+          python -m pip install --upgrade pip pyinstaller
+          pyinstaller --noconfirm --onefile --windowed --name Jarvis windows/jarvis_desktop.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Jarvis-Windows-Desktop
+          path: dist/Jarvis.exe
+          if-no-files-found: error
+
   android-build:
     name: Build Android APK if Android project exists
     runs-on: ubuntu-latest
@@ -58,6 +76,10 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - name: Generate missing Flutter Android scaffolding
+        if: steps.detect.outputs.present == 'true' && hashFiles('pubspec.yaml') != ''
+        run: |
+          if [ ! -d android ]; then flutter create --platforms=android .; fi
       - name: Build Flutter release APK
         if: steps.detect.outputs.present == 'true' && hashFiles('pubspec.yaml') != ''
         run: |
@@ -87,7 +109,7 @@ jobs:
   publish-release:
     name: Publish downloadable GitHub Release
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [windows-source-package, android-build]
+    needs: [windows-source-package, windows-desktop-build, android-build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
