@@ -3,7 +3,7 @@ import json
 import os
 import threading
 import tkinter as tk
-from tkinter import messagebox, simpledialog
+from tkinter import simpledialog
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
