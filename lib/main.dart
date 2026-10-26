@@ -168,9 +168,11 @@ class _ChatPageState extends State<ChatPage> {
         throw Exception('The backend response did not include a reply.');
       }
 
-      if (mounted) setState(() => messages.add(
-            ChatMessage(data['reply'].toString(), false),
-          ));
+      if (mounted) {
+        setState(() => messages.add(
+              ChatMessage(data['reply'].toString(), false),
+            ));
+      }
     } on http.ClientException {
       if (mounted) {
         setState(() => messages.add(ChatMessage(
