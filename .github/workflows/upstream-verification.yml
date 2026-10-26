@@ -1,0 +1,74 @@
+name: Verify Jarvis upstream integrations
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/upstream-verification.yml"
+  pull_request:
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/upstream-verification.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jarvis-upstream-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  atticus-windows:
+    name: Clone and test Atticus (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Jarvis workspace
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Clone Atticus upstream
+        shell: pwsh
+        run: git clone --depth 1 https://github.com/FindlayHi/atticus-windows.git backend/atticus
+      - name: Run Atticus unit tests
+        working-directory: backend/atticus
+        shell: pwsh
+        run: |
+          $env:PYTHONUTF8 = "1"
+          python -m unittest discover -s tests -v
+      - name: Run Atticus brain self-test
+        working-directory: backend/atticus
+        shell: pwsh
+        run: |
+          $env:PYTHONUTF8 = "1"
+          python atticus.py --selftest
+
+  artemis-linux:
+    name: Clone and test ARTEMIS (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout Jarvis workspace
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/artemis/uv.lock
+      - name: Clone ARTEMIS upstream
+        run: git clone --depth 1 https://github.com/google/artemis.git backend/artemis
+      - name: Install locked development dependencies
+        working-directory: backend/artemis
+        run: uv sync --dev --locked
+      - name: Run deterministic ARTEMIS tests
+        working-directory: backend/artemis
+        run: uv run pytest tests/unit tests/tools packages/artemis-client/tests -q
