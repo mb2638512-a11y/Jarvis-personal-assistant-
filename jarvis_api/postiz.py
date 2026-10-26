@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import AnyHttpUrl, BaseModel, Field
 
 from jarvis_api.config import settings
 
@@ -122,6 +122,10 @@ class PostizCreatePost(BaseModel):
     posts: list[PostizTargetPost] = Field(min_length=1, max_length=50)
 
 
+class PostizUploadFromUrl(BaseModel):
+    url: AnyHttpUrl
+
+
 @router.get("/status")
 async def postiz_status() -> dict[str, Any]:
     return {
@@ -172,3 +176,41 @@ async def delete_post(post_id: str) -> Any:
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,200}", post_id):
         raise HTTPException(status_code=422, detail="Invalid Postiz post id.")
     return await _request("DELETE", f"/posts/{post_id}")
+
+
+@router.post("/upload-from-url", dependencies=[Depends(_require_gateway_token)])
+async def upload_from_url(body: PostizUploadFromUrl) -> Any:
+    media_url = str(body.url)
+    if not media_url.startswith("https://"):
+        raise HTTPException(status_code=422, detail="Media URL must use HTTPS.")
+    return await _request("POST", "/upload-from-url", json={"url": media_url})
+
+
+@router.get("/find-slot/{integration_id}", dependencies=[Depends(_require_gateway_token)])
+async def find_next_slot(integration_id: str) -> Any:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,200}", integration_id):
+        raise HTTPException(status_code=422, detail="Invalid Postiz integration id.")
+    return await _request("GET", f"/find-slot/{integration_id}")
+
+
+@router.get("/analytics/{integration_id}", dependencies=[Depends(_require_gateway_token)])
+async def channel_analytics(
+    integration_id: str,
+    start_date: str | None = Query(default=None, alias="startDate"),
+    end_date: str | None = Query(default=None, alias="endDate"),
+) -> Any:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,200}", integration_id):
+        raise HTTPException(status_code=422, detail="Invalid Postiz integration id.")
+    params = {}
+    if start_date:
+        params["startDate"] = start_date
+    if end_date:
+        params["endDate"] = end_date
+    return await _request("GET", f"/analytics/{integration_id}", params=params or None)
+
+
+@router.get("/analytics/post/{post_id}", dependencies=[Depends(_require_gateway_token)])
+async def post_analytics(post_id: str) -> Any:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,200}", post_id):
+        raise HTTPException(status_code=422, detail="Invalid Postiz post id.")
+    return await _request("GET", f"/analytics/post/{post_id}")
