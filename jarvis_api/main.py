@@ -7,8 +7,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from jarvis_api.config import settings
+from jarvis_api.postiz import router as postiz_router
 
-app = FastAPI(title="Jarvis Personal Assistant API", version="0.1.0")
+app = FastAPI(title="Jarvis Personal Assistant API", version="0.2.0")
+app.include_router(postiz_router)
 
 
 class ChatRequest(BaseModel):
@@ -41,6 +43,7 @@ async def status() -> dict[str, object]:
         "provider": "openai-compatible",
         "configured": configured,
         "ready": configured,
+        "postiz_configured": bool(settings.postiz_api_key.strip()),
         "note": "Configuration status only; a successful provider request has not been verified by this endpoint.",
     }
 
