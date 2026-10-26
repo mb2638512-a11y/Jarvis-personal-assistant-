@@ -21,6 +21,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+
+  shared-backend-smoke:
+    name: Test shared cross-platform API scaffold
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Jarvis workspace
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install shared backend dependencies
+        run: python -m pip install -r backend/requirements.txt
+      - name: Validate API imports and endpoints
+        run: |
+          python - <<'PY'
+          from fastapi.testclient import TestClient
+          from backend.core.app import app
+          client = TestClient(app)
+          assert client.get("/api/v1/health").json() == {"status": "ok", "apiVersion": "1.0.0"}
+          for target in ("android", "windows"):
+              response = client.get("/api/v1/capabilities", params={"platform": target})
+              assert response.status_code == 200
+              assert response.json()["platform"] == target
+          submitted = client.post(
+              "/api/v1/tasks",
+              headers={"Idempotency-Key": "ci-test-key-0001"},
+              json={"task": "CI smoke test", "platform": "windows", "dryRun": True},
+          )
+          assert submitted.status_code == 202, submitted.text
+          task_id = submitted.json()["taskId"]
+          assert client.get(f"/api/v1/tasks/{task_id}").status_code == 200
+          assert client.post(f"/api/v1/tasks/{task_id}/cancel").status_code == 202
+          print("shared backend API smoke tests passed")
+          PY
   atticus-windows:
     name: Clone and test Atticus (Windows)
     runs-on: windows-latest
