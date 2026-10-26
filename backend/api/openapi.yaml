@@ -1,0 +1,140 @@
+openapi: 3.1.0
+info:
+  title: Jarvis Shared Backend API
+  version: 1.0.0
+  description: >
+    Platform-neutral API contract for Jarvis Android and Windows clients.
+    This is a contract draft; endpoints must be implemented and tested before
+    clients rely on them in production.
+servers:
+  - url: https://localhost:8443/api/v1
+    description: Local development only; production must use a trusted HTTPS endpoint.
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      security: []
+      summary: Health and API version
+      responses:
+        '200':
+          description: Backend is responding
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, apiVersion]
+                properties:
+                  status: { type: string, enum: [ok] }
+                  apiVersion: { type: string }
+  /capabilities:
+    get:
+      summary: List capabilities available to this device and session
+      responses:
+        '200':
+          description: Capability catalogue
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [platform, capabilities]
+                properties:
+                  platform: { type: string, enum: [android, windows, server] }
+                  capabilities:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, status, requiresConfirmation]
+                      properties:
+                        id: { type: string }
+                        status: { type: string, enum: [available, permission_required, unsupported, disabled] }
+                        requiresConfirmation: { type: boolean }
+                        permission: { type: [string, 'null'] }
+  /tasks:
+    post:
+      summary: Submit a task to the shared task engine
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [task]
+              properties:
+                task: { type: string, minLength: 1, maxLength: 10000 }
+                platform: { type: string, enum: [android, windows] }
+                requestedCapabilities:
+                  type: array
+                  items: { type: string }
+                dryRun: { type: boolean, default: false }
+      responses:
+        '202':
+          description: Task accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [taskId, status]
+                properties:
+                  taskId: { type: string }
+                  status: { type: string, enum: [queued, running] }
+        '400': { description: Invalid request }
+        '401': { description: Authentication required }
+        '403': { description: Capability not authorized }
+        '409': { description: Idempotency key conflict }
+  /tasks/{taskId}:
+    get:
+      summary: Get task status and result
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Task state and safe result summary }
+        '401': { description: Authentication required }
+        '404': { description: Task not found }
+  /tasks/{taskId}/cancel:
+    post:
+      summary: Request cancellation of a running task
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema: { type: string }
+      responses:
+        '202': { description: Cancellation requested }
+        '401': { description: Authentication required }
+        '404': { description: Task not found }
+  /approvals/{approvalId}:
+    post:
+      summary: Approve or reject a sensitive action
+      parameters:
+        - in: path
+          name: approvalId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [approve, reject] }
+      responses:
+        '200': { description: Decision recorded }
+        '401': { description: Authentication required }
+        '404': { description: Approval request not found }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
