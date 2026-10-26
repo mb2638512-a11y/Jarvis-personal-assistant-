@@ -98,3 +98,48 @@ def test_postiz_upstream_error_body_is_not_leaked(monkeypatch):
     assert response.status_code == 502
     assert response.json()["detail"] == "Postiz returned HTTP 429."
     assert "secret upstream" not in response.text
+
+def test_upload_from_url_requires_https(monkeypatch):
+    configure(monkeypatch)
+    response = client.post(
+        "/api/postiz/upload-from-url",
+        json={"url": "http://example.com/image.png"},
+        headers={"X-Jarvis-Postiz-Token": TOKEN},
+    )
+    assert response.status_code == 422
+    assert "HTTPS" in response.json()["detail"]
+
+
+def test_find_slot_routes_to_postiz(monkeypatch):
+    configure(monkeypatch)
+
+    async def fake_request(self, method, url, **kwargs):
+        assert method == "GET"
+        assert url == "https://postiz.example/api/public/v1/find-slot/channel-1"
+        request = httpx.Request(method, url)
+        return httpx.Response(200, request=request, json={"slot": "2026-10-28T10:00:00Z"})
+
+    monkeypatch.setattr(httpx.AsyncClient, "request", fake_request)
+    response = client.get(
+        "/api/postiz/find-slot/channel-1",
+        headers={"X-Jarvis-Postiz-Token": TOKEN},
+    )
+    assert response.status_code == 200
+    assert "slot" in response.json()
+
+
+def test_analytics_routes_to_postiz(monkeypatch):
+    configure(monkeypatch)
+
+    async def fake_request(self, method, url, **kwargs):
+        assert url == "https://postiz.example/api/public/v1/analytics/post/post-1"
+        request = httpx.Request(method, url)
+        return httpx.Response(200, request=request, json={"views": 10})
+
+    monkeypatch.setattr(httpx.AsyncClient, "request", fake_request)
+    response = client.get(
+        "/api/postiz/analytics/post/post-1",
+        headers={"X-Jarvis-Postiz-Token": TOKEN},
+    )
+    assert response.status_code == 200
+    assert response.json()["views"] == 10
