@@ -73,4 +73,7 @@ jobs:
         run: uv sync --dev --locked
       - name: Run deterministic ARTEMIS tests
         working-directory: backend/artemis
-        run: uv run pytest tests/unit tests/tools packages/artemis-client/tests -q
+        env:
+          NO_COLOR: "1"
+          TERM: dumb
+        run: make test
