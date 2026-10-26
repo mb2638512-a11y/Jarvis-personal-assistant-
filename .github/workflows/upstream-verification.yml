@@ -40,8 +40,11 @@ jobs:
         shell: pwsh
         run: |
           $env:PYTHONUTF8 = "1"
-          # Prefer native Windows system tools over Git-for-Windows PATH shims.
-          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot;$env:PATH"
+          # Git for Windows may shadow native tools (e.g. where.exe) and break
+          # Atticus's safety check for Windows-owned executables.
+          $native = @("$env:SystemRoot\System32", "$env:SystemRoot")
+          $rest = $env:PATH -split ';' | Where-Object { $_ -and $_ -notmatch '(?i)\\Git\\(usr\\bin|mingw64\\bin|bin)' }
+          $env:PATH = ($native + $rest) -join ';'
           python -m unittest discover -s tests -v
       - name: Run Atticus brain self-test
         working-directory: backend/atticus
@@ -76,4 +79,9 @@ jobs:
         env:
           NO_COLOR: "1"
           TERM: dumb
-        run: make test
+          # Unit tests construct provider clients but mock network calls; this
+          # placeholder satisfies SDK validation and is not a real credential.
+          GOOGLE_API_KEY: "ci-placeholder-not-a-real-key"
+        run: |
+          printf 'GOOGLE_API_KEY=ci-placeholder-not-a-real-key\n' > .env
+          make test
