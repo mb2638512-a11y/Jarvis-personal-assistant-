@@ -12,7 +12,7 @@ The earlier visual prototype/source bundle is not present on the current clean b
 
 ## Current backend foundation
 - FastAPI backend with an OpenAI-compatible chat endpoint (requires your own provider API key).
-- Postiz Public API adapter for listing connected channels, listing posts, creating drafts/scheduled/immediate posts, and deleting posts.
+- Postiz Public API adapter for channels, posts, media URL import, next scheduling slots, and channel/post analytics.
 - Postiz credentials stay server-side; action routes require a separate gateway token.
 - Explicit configuration through environment variables; secrets are not committed.
 - Unit tests for configuration, safe failure behavior, and mocked Postiz API requests.
@@ -40,6 +40,9 @@ Open `http://127.0.0.1:8000/docs` for the OpenAPI interface. Never put provider 
 - `GET /api/postiz/posts?startDate=<ISO>&endDate=<ISO>`: list posts.
 - `POST /api/postiz/posts`: create a draft, schedule a post, or publish immediately when `type: "now"` is explicitly requested.
 - `DELETE /api/postiz/posts/{id}`: delete a Postiz post/group.
+- `POST /api/postiz/upload-from-url`: import HTTPS media via Postiz.
+- `GET /api/postiz/find-slot/{integration_id}`: get the next scheduling slot.
+- `GET /api/postiz/analytics/{integration_id}` and `GET /api/postiz/analytics/post/{id}`: analytics.
 
 See [Postiz integration guide](docs/POSTIZ_INTEGRATION.md) and [shared client API contract](docs/JARVIS_CLIENT_API.md). Protected Postiz action routes require `X-Jarvis-Postiz-Token`. Until Jarvis user authentication and per-user permissions exist, keep them on a trusted network or behind an authenticated private gateway; do not embed this token in Android or Windows clients.
 
