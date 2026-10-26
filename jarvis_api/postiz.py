@@ -6,6 +6,7 @@ user authentication/authorization is implemented.
 """
 from __future__ import annotations
 
+import re
 import secrets
 from typing import Any, Literal
 
@@ -24,36 +25,60 @@ def _configured() -> bool:
 
 def _base_url() -> str:
     value = settings.postiz_base_url.rstrip("/")
-    if not value.startswith("https://") and not (
-        value.startswith("http://")
-        and value.split("/")[2].split(":")[0] in {"localhost", "127.0.0.1"}
-    ):
-        raise HTTPException(status_code=500, detail="Postiz URL must use HTTPS except for localhost.")
+    local_http = value.startswith("http://") and value.split("/")[2].split(":")[0] in {
+        "localhost",
+        "127.0.0.1",
+    }
+    if not value.startswith("https://") and not local_http:
+        raise HTTPException(
+            status_code=500,
+            detail="Postiz URL must use HTTPS except for localhost.",
+        )
     return value
 
 
-def _require_gateway_token(x_jarvis_postiz_token: str | None = Header(default=None)) -> None:
+def _require_gateway_token(
+    x_jarvis_postiz_token: str | None = Header(default=None),
+) -> None:
     expected = settings.postiz_gateway_token.strip()
     if not expected:
         raise HTTPException(
             status_code=503,
             detail="Postiz actions are disabled until JARVIS_POSTIZ_GATEWAY_TOKEN is configured.",
         )
-    if not x_jarvis_postiz_token or not secrets.compare_digest(x_jarvis_postiz_token, expected):
-        raise HTTPException(status_code=401, detail="Valid Jarvis Postiz gateway token required.")
+    if not x_jarvis_postiz_token or not secrets.compare_digest(
+        x_jarvis_postiz_token, expected
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Valid Jarvis Postiz gateway token required.",
+        )
 
 
-async def _request(method: str, path: str, *, params: dict[str, Any] | None = None,
-                   json: dict[str, Any] | None = None) -> Any:
+async def _request(
+    method: str,
+    path: str,
+    *,
+    params: dict[str, Any] | None = None,
+    json: dict[str, Any] | None = None,
+) -> Any:
     if not _configured():
-        raise HTTPException(status_code=503, detail="Postiz is not configured on this server.")
+        raise HTTPException(
+            status_code=503,
+            detail="Postiz is not configured on this server.",
+        )
     url = f"{_base_url()}/{path.lstrip('/')}"
     try:
-        async with httpx.AsyncClient(timeout=settings.postiz_timeout_seconds) as client:
+        async with httpx.AsyncClient(
+            timeout=settings.postiz_timeout_seconds
+        ) as client:
             response = await client.request(
                 method,
                 url,
-                headers={"Authorization": settings.postiz_api_key, "Accept": "application/json"},
+                headers={
+                    "Authorization": settings.postiz_api_key,
+                    "Accept": "application/json",
+                },
                 params=params,
                 json=json,
             )
@@ -62,14 +87,20 @@ async def _request(method: str, path: str, *, params: dict[str, Any] | None = No
                 return {"ok": True}
             return response.json()
     except httpx.TimeoutException as exc:
-        raise HTTPException(status_code=504, detail="Postiz request timed out.") from exc
+        raise HTTPException(
+            status_code=504,
+            detail="Postiz request timed out.",
+        ) from exc
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
             status_code=502,
             detail=f"Postiz returned HTTP {exc.response.status_code}.",
         ) from exc
     except (httpx.HTTPError, ValueError) as exc:
-        raise HTTPException(status_code=502, detail="Postiz response could not be processed.") from exc
+        raise HTTPException(
+            status_code=502,
+            detail="Postiz response could not be processed.",
+        ) from exc
 
 
 class PostizPostValue(BaseModel):
@@ -113,7 +144,10 @@ async def list_posts(
     end_date: str = Query(alias="endDate", min_length=1),
     customer: str | None = Query(default=None),
 ) -> Any:
-    params: dict[str, str] = {"startDate": start_date, "endDate": end_date}
+    params: dict[str, str] = {
+        "startDate": start_date,
+        "endDate": end_date,
+    }
     if customer:
         params["customer"] = customer
     return await _request("GET", "/posts", params=params)
@@ -122,12 +156,19 @@ async def list_posts(
 @router.post("/posts", dependencies=[Depends(_require_gateway_token)])
 async def create_post(body: PostizCreatePost) -> Any:
     if body.type == "schedule" and not body.date:
-        raise HTTPException(status_code=422, detail="date is required when type is 'schedule'.")
-    return await _request("POST", "/posts", json=body.model_dump(exclude_none=True))
+        raise HTTPException(
+            status_code=422,
+            detail="date is required when type is 'schedule'.",
+        )
+    return await _request(
+        "POST",
+        "/posts",
+        json=body.model_dump(exclude_none=True),
+    )
 
 
 @router.delete("/posts/{post_id}", dependencies=[Depends(_require_gateway_token)])
 async def delete_post(post_id: str) -> Any:
-    if not post_id.strip() or len(post_id) > 200:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,200}", post_id):
         raise HTTPException(status_code=422, detail="Invalid Postiz post id.")
     return await _request("DELETE", f"/posts/{post_id}")
