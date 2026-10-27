@@ -11,6 +11,7 @@ import secrets
 import sqlite3
 import time
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Literal
 
@@ -27,7 +28,8 @@ ALLOWED_KEYS = {"ENTER", "ESC", "TAB", "CTRL+C", "CTRL+V", "CTRL+S", "ALT+TAB", 
 TASK_TYPES = {"open_url", "open_app", "type_text", "press_key", "screenshot", "get_status"}
 
 
-def _db() -> sqlite3.Connection:
+@contextmanager
+def _db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(DB_PATH, timeout=5)
     db.row_factory = sqlite3.Row
@@ -42,7 +44,11 @@ def _db() -> sqlite3.Connection:
         result TEXT, error TEXT
     )""")
     db.commit()
-    return db
+    try:
+        yield db
+        db.commit()
+    finally:
+        db.close()
 
 
 def _auth(token: str | None) -> None:
