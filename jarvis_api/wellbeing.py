@@ -6,7 +6,6 @@ reliably tell how many individual reels a user watched inside third-party apps.
 """
 from __future__ import annotations
 
-import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -110,7 +109,7 @@ def usage_summary(
         rows = db.execute(
             """SELECT platform,app_id,app_label,SUM(foreground_seconds) AS seconds,
             SUM(reels_count) AS reels_count,COUNT(*) AS samples,MAX(observed_at) AS last_seen
-            FROM usage_events WHERE device_id=? AND observed_at >= datetime('now', ?)
+            FROM usage_events WHERE device_id=? AND julianday(observed_at) >= julianday('now', ?)
             GROUP BY platform,app_id,app_label ORDER BY seconds DESC""",
             (device_id, f"-{days} days"),
         ).fetchall()
