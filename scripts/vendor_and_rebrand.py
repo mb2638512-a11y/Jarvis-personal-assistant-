@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Vendor upstream projects into Jarvis with safe, auditable top-level branding."""
 from __future__ import annotations
-import json, pathlib, re, subprocess, sys
+import json, pathlib, re, shutil, subprocess, sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 VENDORS = [
@@ -23,6 +23,8 @@ def main():
         target.parent.mkdir(parents=True, exist_ok=True)
         # Full clone (not a shallow clone): preserve complete upstream history.
         run(["git", "clone", item["url"], str(target)])
+        # Convert the clone into ordinary vendored source files, not nested Git links.
+        shutil.rmtree(target / ".git")
         upstream_readme = target / "README.md"
         if upstream_readme.exists():
             original = upstream_readme.read_text(encoding="utf-8", errors="replace")
