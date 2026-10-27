@@ -27,7 +27,7 @@ jobs:
       - name: Remove submodule pointers so complete source can be placed in-tree
         run: |
           git rm -f .gitmodules || true
-          git rm -f backend/vendor/atticus-windows backend/vendor/artemis backend/vendor/postiz-app || true
+          git rm -rf backend/vendor/atticus-windows backend/vendor/artemis backend/vendor/postiz-app || true
           rm -rf backend/vendor/atticus-windows backend/vendor/artemis backend/vendor/postiz-app
           mkdir -p backend/vendor
       - name: Clone full upstream histories and apply safe Jarvis branding
@@ -43,5 +43,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
+          if git diff --cached --quiet; then
+            echo "Vendored source is already current; no commit required."
+            exit 0
+          fi
           git commit -m "Vendor full upstream source and apply Jarvis branding"
           git push origin HEAD:feature/vendor-three-repos
