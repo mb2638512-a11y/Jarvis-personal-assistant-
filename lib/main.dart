@@ -309,13 +309,6 @@ class _ChatPageState extends State<ChatPage> {
     if (text.isEmpty || busy) return;
 
     final uri = _endpoint('/api/chat');
-    if (uri == null) {
-      setState(() => messages.add(ChatMessage(
-            'Your backend URL is invalid. Open Settings and enter a valid http:// or https:// URL.',
-            false,
-          )));
-      return;
-    }
 
     setState(() {
       messages.add(ChatMessage(text, true));
@@ -330,6 +323,9 @@ class _ChatPageState extends State<ChatPage> {
       if (localReply != null) {
         if (mounted) setState(() => messages.add(ChatMessage(localReply, false)));
         return;
+      }
+      if (uri == null) {
+        throw Exception('No local LLM provider is configured and the shared backend URL is invalid. Configure a provider in LLM Settings or fix the backend URL.');
       }
       final response = await http
           .post(
