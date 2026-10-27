@@ -18,7 +18,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -29,11 +28,11 @@ jobs:
           python -m pip install -e ".[dev]"
           ruff check jarvis_api tests windows
           pytest -q
-      - name: Package backend and frontend source
+      - name: Package shared backend and integration source
         shell: pwsh
         run: |
           foreach ($repo in @("backend/vendor/postiz-app", "backend/vendor/artemis", "backend/vendor/atticus-windows")) {
-            if (!(Test-Path (Join-Path $repo "README.md"))) { throw "Recursive submodule checkout missing source: $repo" }
+            if (!(Test-Path (Join-Path $repo "UPSTREAM_README.md"))) { throw "Vendored upstream source missing: $repo" }
           }
           if (!(Test-Path "backend/vendor/postiz-app/LICENSE")) { throw "Postiz upstream license file missing" }
           Compress-Archive -Path jarvis_api, tests, web, windows, backend/vendor, docs, scripts, pyproject.toml, README.md, .env.example -DestinationPath Jarvis-Windows-Backend-Source.zip
