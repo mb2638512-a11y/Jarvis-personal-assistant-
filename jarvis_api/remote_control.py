@@ -107,7 +107,8 @@ def _validate_action(body: RemoteTaskRequest) -> None:
             raise HTTPException(status_code=422, detail="open_url requires an HTTPS url.")
     elif body.kind == "open_app":
         app = payload.get("app")
-        allowed_apps = WINDOWS_APPS if body.target_platform == "windows" else ANDROID_APPS\n        if not isinstance(app, str) or app.lower() not in allowed_apps:
+        allowed_apps = WINDOWS_APPS if body.target_platform == "windows" else ANDROID_APPS
+        if not isinstance(app, str) or app.lower() not in allowed_apps:
             raise HTTPException(status_code=422, detail="App is not in the safe application allowlist.")
     elif body.kind == "type_text":
         text = payload.get("text")
@@ -119,7 +120,8 @@ def _validate_action(body: RemoteTaskRequest) -> None:
         key = payload.get("key")
         if not body.user_confirmed:
             raise HTTPException(status_code=403, detail="Remote key presses require explicit user confirmation.")
-        allowed_keys = WINDOWS_KEYS if body.target_platform == "windows" else ANDROID_KEYS\n        if not isinstance(key, str) or key.upper() not in allowed_keys:
+        allowed_keys = WINDOWS_KEYS if body.target_platform == "windows" else ANDROID_KEYS
+        if not isinstance(key, str) or key.upper() not in allowed_keys:
             raise HTTPException(status_code=422, detail="Key is not in the safe key allowlist.")
     elif body.kind in {"screenshot", "get_status"} and payload:
         raise HTTPException(status_code=422, detail=f"{body.kind} does not accept a payload.")
