@@ -7,10 +7,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from jarvis_api.config import settings
+from jarvis_api.integrations import router as integrations_router
 from jarvis_api.postiz import router as postiz_router
 
 app = FastAPI(title="Jarvis Personal Assistant API", version="0.2.0")
 app.include_router(postiz_router)
+app.include_router(integrations_router)
 
 
 class ChatRequest(BaseModel):
