@@ -1,7 +1,11 @@
-#!/usr/bin/env python3
 """Vendor upstream projects into Jarvis with safe, auditable top-level branding."""
 from __future__ import annotations
-import json, pathlib, re, shutil, subprocess, sys
+import json
+import pathlib
+import re
+import shutil
+import subprocess
+import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 VENDORS = [
@@ -46,7 +50,7 @@ def main():
                     if isinstance(data, dict) and isinstance(data.get("name"), str):
                         data["jarvisUpstreamPackageName"] = data["name"]
                         if item["old"].lower() in data["name"].lower():
-                            data["name"] = re.sub(item["old"], "jarvis", data["name"], flags=re.I)
+                            data["name"] = re.sub(item["old"], "jarvis", data["name"], flags=re.IGNORECASE)
                         package_file.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
                 except (json.JSONDecodeError, UnicodeDecodeError):
                     print("Skipped non-standard package metadata: " + str(package_file), file=sys.stderr)
