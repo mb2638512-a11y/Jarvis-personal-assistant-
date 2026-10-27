@@ -27,7 +27,6 @@ APP_ALLOWLIST = {
     "chrome": ["chrome.exe"],
     "edge": ["msedge.exe"],
     "firefox": ["firefox.exe"],
-    "settings": ["cmd.exe", "/c", "start", "ms-settings:"],
 }
 KEY_ALLOWLIST = {"ENTER": "enter", "ESC": "esc", "TAB": "tab", "CTRL+C": "ctrl+c", "CTRL+V": "ctrl+v", "CTRL+S": "ctrl+s", "ALT+TAB": "alt+tab", "WIN": "win"}
 
@@ -56,7 +55,10 @@ def execute(task: dict) -> dict:
         app = str(payload.get("app", "")).lower()
         if app not in APP_ALLOWLIST:
             raise ValueError("App is not allowlisted")
-        subprocess.Popen(APP_ALLOWLIST[app], shell=False)
+        if app == "settings":
+            os.startfile("ms-settings:")
+        else:
+            subprocess.Popen(APP_ALLOWLIST[app], shell=False)
         return {"launched": app}
     if kind == "get_status":
         return {"platform": "windows", "hostname": platform.node(), "python": platform.python_version()}
