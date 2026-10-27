@@ -106,6 +106,55 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
     _apiKey.clear();
   }
 
+  Future<void> _testConnection() async {
+    final index = _providers.indexWhere((p) => p['id'] == _activeId);
+    if (index < 0) {
+      setState(() => _status = 'Add or select a provider first.');
+      return;
+    }
+    final provider = _providers[index];
+    final uri = _endpoint(provider['baseUrl'] as String, '/models');
+    if (uri == null) {
+      setState(() => _status = 'Provider URL is invalid or insecure.');
+      return;
+    }
+    setState(() { _busy = true; _status = 'Testing connection to ${provider['name']}…'; });
+    try {
+      final id = provider['id'] as String;
+      final key = await _storage.read(key: 'jarvis.llm.key.$id') ?? '';
+      final headers = <String, String>{'Accept': 'application/json'};
+      if (key.isNotEmpty) headers['Authorization'] = 'Bearer $key';
+      final custom = (provider['headers'] as String? ?? '').trim();
+      if (custom.isNotEmpty) {
+        final decoded = jsonDecode(custom);
+        if (decoded is! Map) throw const FormatException('Custom headers must be a JSON object.');
+        for (final entry in decoded.entries) {
+          final name = entry.key.toString();
+          if ({'authorization', 'host', 'content-length'}.contains(name.toLowerCase()) ||
+              name.contains('\\r') || name.contains('\\n')) {
+            throw const FormatException('Unsafe custom header name.');
+          }
+          headers[name] = entry.value.toString();
+        }
+      }
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception('Provider returned HTTP ${response.statusCode}.');
+      }
+      final body = jsonDecode(response.body);
+      if (body is! Map || body['data'] is! List) {
+        throw const FormatException('Connection responded, but /models format is not OpenAI-compatible.');
+      }
+      final count = (body['data'] as List).whereType<Map>().where((m) => m['id'] is String).length;
+      if (!mounted) return;
+      setState(() => _status = 'Connection successful: ${provider['name']} returned ${count} model entries.');
+    } catch (error) {
+      if (mounted) setState(() => _status = 'Connection test failed: ${error.toString().replaceFirst('Exception: ', '')}');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _syncModels() async {
     final index = _providers.indexWhere((p) => p['id'] == _activeId);
     if (index < 0) { setState(() => _status = 'Add or select a provider first.'); return; }
@@ -122,8 +171,8 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
         final decoded = jsonDecode(custom);
         if (decoded is! Map) throw const FormatException('Custom headers must be a JSON object.');
         for (final entry in decoded.entries) {
-          if ({'authorization', 'host'}.contains(entry.key.toString().toLowerCase())) {
-            throw const FormatException('Authorization and Host headers are managed by Jarvis for safety.');
+          if ({'authorization', 'host', 'content-length'}.contains(entry.key.toString().toLowerCase()) || entry.key.toString().contains('\\r') || entry.key.toString().contains('\\n')) {
+            throw const FormatException('Unsafe custom header name.');
           }
           headers[entry.key.toString()] = entry.value.toString();
         }
@@ -214,6 +263,9 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
               onChanged: _selectProvider),
             const SizedBox(height: 10),
             Row(children: [
+              Expanded(child: OutlinedButton.icon(onPressed: _busy ? null : _testConnection,
+                icon: const Icon(Icons.wifi_tethering), label: const Text('Test connection'))),
+              const SizedBox(width: 8),
               Expanded(child: FilledButton.tonalIcon(onPressed: _busy ? null : _syncModels,
                 icon: _busy ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.sync),
                 label: const Text('Sync models'))),
