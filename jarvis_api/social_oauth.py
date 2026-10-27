@@ -20,7 +20,6 @@ PROVIDERS = [
     ("threads", "Threads"),
     ("youtube", "YouTube"),
     ("tiktok", "TikTok"),
-    ("tiktok-business", "TikTok Business"),
     ("linkedin", "LinkedIn"),
     ("pinterest", "Pinterest"),
     ("x", "X"),
@@ -33,7 +32,6 @@ PROVIDERS = [
     ("github", "GitHub"),
     ("tumblr", "Tumblr"),
     ("dribbble", "Dribbble"),
-    ("threads", "Threads"),
     ("wordpress", "WordPress"),
     ("medium", "Medium"),
     ("devto", "DEV Community"),
@@ -43,16 +41,13 @@ PROVIDERS = [
     ("whop", "Whop"),
     ("substack", "Substack"),
     ("beehiiv", "Beehiiv"),
-    ("播客", "Podcast"),
     ("google-business", "Google Business Profile"),
-    ("telegram", "Telegram"),
     ("line", "LINE"),
     ("vk", "VK"),
     ("ok", "Odnoklassniki"),
     ("lemmy", "Lemmy"),
     ("moltbook", "Moltbook"),
 ]
-PROVIDERS = list({slug: (slug, label) for slug, label in PROVIDERS}.values())
 
 
 def _workspace_url() -> str | None:
