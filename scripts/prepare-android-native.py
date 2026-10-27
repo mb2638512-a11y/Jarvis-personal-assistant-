@@ -24,6 +24,6 @@ text = manifest.read_text(encoding="utf-8")
 permission = '<uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />'
 if "android.permission.PACKAGE_USAGE_STATS" not in text:
     text = re.sub(r'(<manifest\b)', r'\1 xmlns:tools="http://schemas.android.com/tools"', text, count=1)
-    text = re.sub(r'(<application\b)', permission + "\n    \1", text, count=1)
+    text = re.sub(r'(<application\b)', permission + "\n    \\1", text, count=1)
 manifest.write_text(text, encoding="utf-8")
 print("Installed Jarvis Android Usage Access and device metrics channel.")
