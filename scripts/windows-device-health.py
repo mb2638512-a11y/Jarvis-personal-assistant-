@@ -60,7 +60,7 @@ def main():
     while True:
         try:
             body = json.dumps(collect()).encode()
-            req = Request(BASE + "/api/device-health/metrics", data=body, method="POST",
+            req = Request(BASE + "/api/wellbeing/device-metrics", data=body, method="POST",
                 headers={"Content-Type":"application/json","X-Jarvis-Gateway-Token":TOKEN})
             with urlopen(req, timeout=12) as response:
                 print(datetime.now().isoformat(timespec="seconds"), "report sent", response.status)
