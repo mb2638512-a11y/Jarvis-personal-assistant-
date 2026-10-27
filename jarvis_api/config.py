@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     request_timeout_seconds: float = Field(default=30, gt=0, le=120)
     # OAuth is handled by the self-hosted Postiz workspace. Do not put social
     # platform tokens or Postiz server credentials in browser/mobile clients.
+    remote_gateway_token: str = ""
+    remote_task_ttl_seconds: int = Field(default=300, gt=0, le=3600)
     postiz_app_url: str = ""
     postiz_api_key: str = ""
     postiz_base_url: str = "https://api.postiz.com/public/v1"
