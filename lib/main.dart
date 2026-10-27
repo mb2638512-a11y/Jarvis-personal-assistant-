@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 void main() => runApp(const JarvisApp());
 
@@ -121,6 +122,41 @@ class _ChatPageState extends State<ChatPage> {
       });
     } finally {
       if (mounted) setState(() => checking = false);
+    }
+  }
+
+  Future<void> openSocialHub() async {
+    final uri = _endpoint('/api/social/connect');
+    if (uri == null) {
+      setState(() => status = 'Set a valid shared backend URL in Settings first.');
+      return;
+    }
+    try {
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      dynamic data;
+      try {
+        data = jsonDecode(response.body);
+      } on FormatException {
+        throw Exception('Backend returned an unreadable response.');
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final detail = data is Map ? data['detail'] : null;
+        throw Exception(detail?.toString() ?? 'Social workspace is not configured.');
+      }
+      final rawUrl = data is Map ? data['url'] : null;
+      final target = rawUrl is String ? Uri.tryParse(rawUrl) : null;
+      if (target == null || target.scheme != 'https' || target.host.isEmpty) {
+        throw Exception('The social workspace returned an invalid secure URL.');
+      }
+      if (!await launchUrl(target, mode: LaunchMode.externalApplication)) {
+        throw Exception('Could not open the OAuth workspace on this device.');
+      }
+    } catch (error) {
+      if (!mounted) return;
+      final message = error.toString().replaceFirst('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Social accounts: $message')),
+      );
     }
   }
 
@@ -287,6 +323,11 @@ class _ChatPageState extends State<ChatPage> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.sync),
+            ),
+            IconButton(
+              tooltip: 'Connect social accounts (OAuth)',
+              onPressed: openSocialHub,
+              icon: const Icon(Icons.hub_outlined),
             ),
             IconButton(
               tooltip: 'Backend settings',
