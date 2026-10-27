@@ -22,7 +22,10 @@ class _DeviceHealthPageState extends State<DeviceHealthPage> {
   Uri? endpoint(String path) {
     final base = Uri.tryParse(widget.backendUrl.trim());
     if (base == null || !base.hasScheme || base.host.isEmpty ||
-        !{'http', 'https'}.contains(base.scheme) || base.userInfo.isNotEmpty) return null;
+        !{'http', 'https'}.contains(base.scheme.toLowerCase()) || base.userInfo.isNotEmpty) return null;
+    final scheme = base.scheme.toLowerCase();
+    final localHosts = {'localhost', '127.0.0.1', '10.0.2.2'};
+    if (scheme != 'https' && !localHosts.contains(base.host.toLowerCase())) return null;
     return base.replace(path: '${base.path.replaceAll(RegExp(r'/+$'), '')}$path', query: null, fragment: null);
   }
 
