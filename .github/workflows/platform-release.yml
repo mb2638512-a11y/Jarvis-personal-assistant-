@@ -32,7 +32,11 @@ jobs:
       - name: Package backend and frontend source
         shell: pwsh
         run: |
-          Compress-Archive -Path jarvis_api, tests, web, windows, backend/vendor/README.md, pyproject.toml, README.md, .env.example -DestinationPath Jarvis-Windows-Backend-Source.zip
+          foreach ($repo in @("backend/vendor/postiz-app", "backend/vendor/artemis", "backend/vendor/atticus-windows")) {
+            if (!(Test-Path (Join-Path $repo "README.md"))) { throw "Recursive submodule checkout missing source: $repo" }
+          }
+          if (!(Test-Path "backend/vendor/postiz-app/LICENSE")) { throw "Postiz upstream license file missing" }
+          Compress-Archive -Path jarvis_api, tests, web, windows, backend/vendor, docs, scripts, pyproject.toml, README.md, .env.example -DestinationPath Jarvis-Windows-Backend-Source.zip
       - uses: actions/upload-artifact@v4
         with:
           name: Jarvis-Windows-Backend-Source
