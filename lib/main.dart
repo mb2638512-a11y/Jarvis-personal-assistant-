@@ -85,6 +85,11 @@ class _ChatPageState extends State<ChatPage> {
         parsed.userInfo.isNotEmpty) {
       return null;
     }
+    final scheme = parsed.scheme.toLowerCase();
+    final localHosts = {'localhost', '127.0.0.1', '10.0.2.2'};
+    if (scheme != 'https' && !localHosts.contains(parsed.host.toLowerCase())) {
+      return null;
+    }
     return parsed.replace(
       path: '${parsed.path.replaceAll(RegExp(r'/+$'), '')}$path',
       query: null,
@@ -428,8 +433,10 @@ class _ChatPageState extends State<ChatPage> {
         !parsed.hasScheme ||
         parsed.host.isEmpty ||
         !{'http', 'https'}.contains(parsed.scheme.toLowerCase()) ||
-        parsed.userInfo.isNotEmpty) {
-      setState(() => status = 'Invalid URL. Enter a valid http:// or https:// address.');
+        parsed.userInfo.isNotEmpty ||
+        (parsed.scheme.toLowerCase() != 'https' &&
+          !{'localhost', '127.0.0.1', '10.0.2.2'}.contains(parsed.host.toLowerCase()))) {
+      setState(() => status = 'Use HTTPS for remote servers. HTTP is allowed only for localhost, 127.0.0.1, or Android emulator host 10.0.2.2.');
       return;
     }
 
