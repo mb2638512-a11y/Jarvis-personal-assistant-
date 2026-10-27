@@ -1,25 +1,26 @@
 # Jarvis shared backend integration status
 
-Jarvis uses one FastAPI backend for both Windows and Android clients. Platform-specific actions execute in the appropriate device-side agent rather than pretending one remote process can control both operating systems directly.
+Jarvis uses one FastAPI backend for Windows and Android clients. The clients share APIs; operating-system actions execute on a paired native agent for the target OS.
 
-## Upstream responsibilities
+## Social accounts: OAuth-first
 
-- Atticus is a Windows automation engine and must run on the user's Windows device.
-- ARTEMIS is an Android device automation/MCP engine and requires an authorized Android device or emulator plus its device runtime.
-- Postiz is a server-side social publishing engine. Jarvis uses its API adapter; its separate web UI is not the Jarvis client UI.
+The Jarvis Social Hub now lists 30+ provider labels and sends users to the configured self-hosted Postiz workspace at `JARVIS_POSTIZ_APP_URL/integrations`. Social account authorization and token storage are handled in that workspace using the provider's official OAuth flow; the Jarvis UI does not ask users for social passwords or expose provider tokens. Official provider developer-app credentials may still be required in the Postiz server environment. The older public-API adapter remains for compatibility but is not used by the new OAuth-first hub.
 
-The endpoint `/api/integrations/status` reports source presence, intended runtime, capabilities, and verified readiness separately.
+Configure `JARVIS_POSTIZ_APP_URL=https://your-social-workspace.example`. The app's provider catalog is a discovery list, not proof every provider is enabled or that OAuth is already connected.
 
-## Verification boundary
+## Cross-device remote control
 
-The three source trees are vendored, and the shared backend exposes an integration status endpoint. Postiz adapter unit tests mock its HTTP boundary. This does not prove live publishing. Atticus has not yet been connected to an authenticated Windows device agent, and ARTEMIS has not yet been connected to an authenticated Android/ADB agent. A durable cross-device task bus, agent enrollment, task cancellation, authorization, and audit logging remain to be implemented. The status endpoint intentionally reports these integrations as not live-connected and not production-ready.
+The shared broker exposes `/api/remote/*` routes for agent registration, heartbeat, typed task queueing, polling, and results. Tasks are stored in SQLite, expire, and reject arbitrary shell/script payloads. Typing and key presses require an explicit confirmation flag; the Windows agent also uses an app/key allowlist.
 
-## Required remaining work
+Configure a strong private `JARVIS_REMOTE_GATEWAY_TOKEN` on the server and set the same value only in trusted clients/agents. Do not commit the token, put it in a public release, or use an untrusted network without HTTPS. The Android app and web dashboard can queue Windows actions. To execute them on a Windows PC, run `scripts/windows-remote-agent.py` interactively on that PC with:
+- `JARVIS_REMOTE_BASE_URL=https://your-jarvis-server.example`
+- `JARVIS_REMOTE_GATEWAY_TOKEN=<private token>`
+- optional `JARVIS_WINDOWS_AGENT_ID=mustafa-pc`
 
-1. Implement device-agent enrollment, rotating credentials, heartbeat, capability negotiation, and revocation.
-2. Add a durable task queue with ownership, expiry, idempotency, audit events, cancellation, and explicit user confirmation for consequential actions.
-3. Connect the Windows agent to Atticus and the Android agent to ARTEMIS/MCP.
-4. Run contract tests and real end-to-end tests on a Windows host and authorized Android device.
-5. Verify Postiz channel listing and draft creation with real server-side credentials before testing publishing.
+Install `pyautogui` on the Windows PC only if you want the optional typing/key/screenshot features. Screenshots remain on the PC; this agent does not upload them. Stop the agent with Ctrl+C.
 
-Never embed API keys or agent secrets in client binaries. Protect remote actions with TLS, authentication, per-user authorization, rate limits, and audit logs.
+## Important verification boundary
+
+The backend broker and its API tests do not mean that every device engine is fully connected. A Windows agent implementation is included, but it has not been exercised on a real Windows PC in this environment. An Android-native agent that runs ARTEMIS and reports Android-device tasks is still required for full two-way control (phone controls PC, PC controls phone). Atticus remains Windows-specific and ARTEMIS remains Android/ADB-specific; neither engine can natively run on the other OS. Postiz OAuth requires a configured workspace and provider app credentials, and live social account connection/publishing has not been verified.
+
+Before production use, replace the shared gateway token with per-user and per-agent identities, revocable credentials, TLS, rate limits, durable audit logs, task cancellation, and least-privilege authorization. Do not expose the broker publicly without these controls.
