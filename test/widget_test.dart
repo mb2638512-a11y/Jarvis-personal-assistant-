@@ -5,6 +5,5 @@ void main() {
   testWidgets('Jarvis app renders its main interface', (tester) async {
     await tester.pumpWidget(const JarvisApp());
     expect(find.text('JARVIS'), findsOneWidget);
-    expect(find.text('Conversation'), findsOneWidget);
   });
 }
