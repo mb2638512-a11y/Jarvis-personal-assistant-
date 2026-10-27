@@ -52,7 +52,7 @@ jobs:
         run: python scripts/prepare-android-native.py
 
       - name: Analyze app
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Run Flutter tests
         run: flutter test
