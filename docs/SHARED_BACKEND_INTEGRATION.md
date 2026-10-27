@@ -17,7 +17,9 @@ Configure a strong private `JARVIS_REMOTE_GATEWAY_TOKEN` on the server and set t
 - `JARVIS_REMOTE_GATEWAY_TOKEN=<private token>`
 - optional `JARVIS_WINDOWS_AGENT_ID=mustafa-pc`
 
-Install `pyautogui` on the Windows PC only if you want the optional typing/key/screenshot features. Screenshots remain on the PC; this agent does not upload them. Stop the agent with Ctrl+C.\n\nFor an Android device connected to a PC, install Android platform-tools, enable USB debugging, and approve that PC on the phone. Then set `JARVIS_REMOTE_BASE_URL`, `JARVIS_REMOTE_GATEWAY_TOKEN`, and optionally `JARVIS_ANDROID_AGENT_ID=android-usb-device`, and run `python scripts/android-adb-agent.py`. This bridge only accepts allowlisted ADB actions and does not upload screenshots.
+Install `pyautogui` on the Windows PC only if you want the optional typing/key/screenshot features. Screenshots remain on the PC; this agent does not upload them. Stop the agent with Ctrl+C.
+
+For an Android device connected to a PC, install Android platform-tools, enable USB debugging, and approve that PC on the phone. Then set `JARVIS_REMOTE_BASE_URL`, `JARVIS_REMOTE_GATEWAY_TOKEN`, and optionally `JARVIS_ANDROID_AGENT_ID=android-usb-device`, and run `python scripts/android-adb-agent.py`. This bridge only accepts allowlisted ADB actions and does not upload screenshots.
 
 ## Important verification boundary
 
