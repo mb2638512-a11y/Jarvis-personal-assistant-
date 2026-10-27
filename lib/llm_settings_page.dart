@@ -95,7 +95,7 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
     final provider = <String, dynamic>{
       'id': id, 'name': _name.text.trim().isEmpty ? _kind : _name.text.trim(),
       'kind': _kind, 'baseUrl': base, 'model': _model.text.trim(),
-      'models': <String>[], 'task': _task, 'headers': _headers.text.trim(),
+      'models': <String>[], 'task': _task, 'routingMode': _routingMode, 'headers': _headers.text.trim(),
     };
     setState(() {
       _providers.add(provider); _activeId = id; _models = [];
@@ -122,8 +122,8 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
         final decoded = jsonDecode(custom);
         if (decoded is! Map) throw const FormatException('Custom headers must be a JSON object.');
         for (final entry in decoded.entries) {
-          if (entry.key.toString().toLowerCase() == 'authorization') {
-            throw const FormatException('Keep API keys in the secure API-key field.');
+          if ({'authorization', 'host'}.contains(entry.key.toString().toLowerCase())) {
+            throw const FormatException('Authorization and Host headers are managed by Jarvis for safety.');
           }
           headers[entry.key.toString()] = entry.value.toString();
         }
@@ -167,7 +167,7 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
       _providers[index]['model'] = _model.text.trim();
       _providers[index]['task'] = _task;
       _providers[index]['routingMode'] = _routingMode;
-      _status = 'Preference saved locally. Chat backend integration is still required before it changes actual model calls.';
+      _status = 'Model and task-routing preference saved. Jarvis chat will use this configuration on the next request.';
     });
     await _save();
   }
@@ -238,7 +238,7 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(value: _routingMode, decoration: const InputDecoration(labelText: 'Routing mode'),
               items: const [
-                DropdownMenuItem(value: 'automatic', child: Text('Automatic by task (router integration required)')),
+                DropdownMenuItem(value: 'automatic', child: Text('Automatic by task category')),
                 DropdownMenuItem(value: 'manual', child: Text('Manual provider/model')),
               ], onChanged: (v) => setState(() => _routingMode = v ?? 'automatic')),
             const SizedBox(height: 10),
@@ -247,7 +247,7 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
           const SizedBox(height: 14),
           Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xff101827), borderRadius: BorderRadius.circular(14)), child: Text(_status)),
           const SizedBox(height: 10),
-          const Text('Compatibility note: providers must expose an OpenAI-compatible /models endpoint for automatic sync. Provider-specific APIs need adapters. Saved model choices do not affect chat until the backend router consumes this configuration.'),
+          const Text('Compatibility note: providers must expose an OpenAI-compatible /models endpoint for automatic sync. Provider-specific APIs need adapters. Jarvis uses the saved model, task category, and provider fallback for new chat requests. Provider APIs must be OpenAI-compatible.'),
         ]))),
     );
   }
