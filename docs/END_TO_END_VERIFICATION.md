@@ -2,19 +2,11 @@
 
 ## Checkout all upstream sources
 
-The three upstreams are pinned Git submodules. They are not copied source snapshots in the Jarvis Git tree. Use a recursive clone so the actual upstream source is present locally:
+The three upstream repositories are vendored as ordinary source files in the Jarvis Git tree. A normal clone is sufficient; do not use submodule commands:
 
 ```bash
-git clone --branch feature/vendor-three-repos --recurse-submodules https://github.com/mb2638512-a11y/Jarvis-personal-assistant-.git
+git clone --branch feature/vendor-three-repos https://github.com/mb2638512-a11y/Jarvis-personal-assistant-.git
 cd Jarvis-personal-assistant-
-git submodule status --recursive
-```
-
-For an existing clone:
-
-```bash
-git submodule sync --recursive
-git submodule update --init --recursive
 ```
 
 ## Start self-hosted Postiz
@@ -62,4 +54,4 @@ Windows executable builds are verified by the repository's GitHub Actions workfl
 
 ## Current known limits
 
-A pinned submodule is not a subtree/vendor-copy: GitHub's main Jarvis tree contains a commit pointer, while recursive checkout fetches upstream source. The API adapter's unit tests are mocked; they do not prove a live Postiz workspace is connected. Live acceptance checks require a deployed Postiz instance and valid credentials, which must not be fabricated or committed.
+The upstream source trees are vendored in the Jarvis Git tree, with upstream attribution and licenses retained. The API adapter's unit tests are mocked; they do not prove a live Postiz workspace is connected. The shared integration status endpoint deliberately reports live connections as false until device agents/task transport and real Postiz credentials are configured and verified. Live acceptance checks require real devices, a deployed Postiz instance and valid credentials, which must not be fabricated or committed.
