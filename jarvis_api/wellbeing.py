@@ -6,6 +6,7 @@ reliably tell how many individual reels a user watched inside third-party apps.
 """
 from __future__ import annotations
 
+import hmac
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -48,7 +49,7 @@ def _authorize(token: str | None) -> None:
     expected = settings.remote_gateway_token.strip()
     if not expected:
         raise HTTPException(503, "Set JARVIS_REMOTE_GATEWAY_TOKEN before enabling private wellbeing APIs.")
-    if token is None or token != expected:
+    if token is None or not hmac.compare_digest(token, expected):
         raise HTTPException(401, "Valid Jarvis gateway token required.")
 
 
