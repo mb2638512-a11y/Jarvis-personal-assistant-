@@ -1,9 +1,0 @@
-[submodule "backend/vendor/atticus-windows"]
-	path = backend/vendor/atticus-windows
-	url = https://github.com/FindlayHi/atticus-windows.git
-[submodule "backend/vendor/artemis"]
-	path = backend/vendor/artemis
-	url = https://github.com/google/artemis.git
-[submodule "backend/vendor/postiz-app"]
-	path = backend/vendor/postiz-app
-	url = https://github.com/gitroomhq/postiz-app.git
