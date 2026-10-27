@@ -44,9 +44,12 @@ jobs:
         run: |
           flutter --version
           flutter pub get
-          if [ ! -d android ]; then
+          if [ ! -f android/gradlew ]; then
             flutter create --platforms=android --org com.jarvis.assistant .
           fi
+
+      - name: Install Jarvis Android native usage and metrics channel
+        run: python scripts/prepare-android-native.py
 
       - name: Analyze app
         run: flutter analyze
