@@ -6,7 +6,7 @@ from jarvis_api.main import app
 
 client = TestClient(app)
 TOKEN = "remote-test-token"
-HEADERS = {"X-Jarvis-Remote-Token": TOKEN}
+HEADERS = {"X-Jarvis-Remote-Token": TOKEN, "X-Jarvis-Agent-Id": "mustafa-pc"}
 
 
 def setup(monkeypatch, tmp_path):
@@ -42,6 +42,10 @@ def test_windows_task_can_be_queued_and_claimed_by_registered_agent(monkeypatch,
     polled = client.get("/api/remote/agents/mustafa-pc/tasks", headers=HEADERS)
     assert polled.status_code == 200
     assert polled.json()["tasks"][0]["id"] == task_id
+    wrong_agent = client.post(f"/api/remote/tasks/{task_id}/result", headers={
+        "X-Jarvis-Remote-Token": TOKEN, "X-Jarvis-Agent-Id": "other-pc"
+    }, json={"status": "succeeded", "result": {"opened": True}})
+    assert wrong_agent.status_code == 403
     done = client.post(f"/api/remote/tasks/{task_id}/result", headers=HEADERS, json={
         "status": "succeeded", "result": {"opened": True}
     })
