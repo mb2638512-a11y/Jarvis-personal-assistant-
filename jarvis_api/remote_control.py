@@ -218,16 +218,32 @@ class TaskResult(BaseModel):
 
 
 @router.post("/tasks/{task_id}/result")
-async def finish_task(task_id: str, body: TaskResult, x_jarvis_remote_token: str | None = Header(default=None)) -> dict[str, Any]:
+async def finish_task(
+    task_id: str,
+    body: TaskResult,
+    x_jarvis_remote_token: str | None = Header(default=None),
+    x_jarvis_agent_id: str | None = Header(default=None),
+) -> dict[str, Any]:
     _auth(x_jarvis_remote_token)
+    if not x_jarvis_agent_id:
+        raise HTTPException(status_code=401, detail="Registered agent id header required.")
+    agent_id = _valid_device_id(x_jarvis_agent_id)
     try:
         uuid.UUID(task_id)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail="Invalid task id.") from exc
     with _db() as db:
+        task = db.execute(
+            "SELECT target_agent FROM tasks WHERE id=? AND status='running' AND expires_at>=?",
+            (task_id, time.time()),
+        ).fetchone()
+        if not task:
+            raise HTTPException(status_code=409, detail="Task is missing, expired, or not running.")
+        if task["target_agent"] != agent_id:
+            raise HTTPException(status_code=403, detail="Only the agent assigned to this task may submit its result.")
         cur = db.execute(
-            "UPDATE tasks SET status=?,result=?,error=? WHERE id=? AND status='running' AND expires_at>=?",
-            (body.status, json.dumps(body.result), body.error, task_id, time.time()),
+            "UPDATE tasks SET status=?,result=?,error=? WHERE id=? AND target_agent=? AND status='running' AND expires_at>=?",
+            (body.status, json.dumps(body.result), body.error, task_id, agent_id, time.time()),
         )
         if cur.rowcount == 0:
             raise HTTPException(status_code=409, detail="Task is missing, expired, or not running.")
