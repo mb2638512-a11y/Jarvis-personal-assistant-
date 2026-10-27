@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'wellbeing_page.dart';
 import 'device_health_page.dart';
 import 'llm_settings_page.dart';
+import 'llm_client.dart';
 
 void main() => runApp(const JarvisApp());
 
@@ -324,6 +325,12 @@ class _ChatPageState extends State<ChatPage> {
     _scrollToBottom();
 
     try {
+      // Prefer the locally configured LLM providers; use shared backend only when none are configured.
+      final localReply = await LlmClient.send(text);
+      if (localReply != null) {
+        if (mounted) setState(() => messages.add(ChatMessage(localReply, false)));
+        return;
+      }
       final response = await http
           .post(
             uri,
