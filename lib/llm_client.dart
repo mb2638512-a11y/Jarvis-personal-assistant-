@@ -81,6 +81,13 @@ class LlmClient {
         final msg = first is Map ? first['message'] : null;
         final reply = msg is Map ? msg['content'] : null;
         if (reply is String && reply.trim().isNotEmpty) return reply.trim();
+        if (reply is List) {
+          final textParts = reply.whereType<Map>()
+              .where((part) => part['type'] == 'text' && part['text'] is String)
+              .map((part) => (part['text'] as String).trim())
+              .where((part) => part.isNotEmpty).toList();
+          if (textParts.isNotEmpty) return textParts.join('\\n');
+        }
         lastError = Exception('Provider returned no text response.');
       } catch (error) { lastError = error; }
     }
