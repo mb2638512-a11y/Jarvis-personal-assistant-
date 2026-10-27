@@ -281,10 +281,10 @@ class _ChatPageState extends State<ChatPage> {
                     final detail = data is Map ? data['detail'] : null;
                     throw Exception(detail?.toString() ?? 'Request failed (HTTP ${response.statusCode}).');
                   }
-                  if (!mounted) return;
+                  if (!dialogContext.mounted || !mounted) return;
                   Navigator.pop(dialogContext);
                   messenger.showSnackBar(
-                    SnackBar(content: Text('Task queued: ${data['task_id'] ?? 'unknown'} · waiting for Windows agent')),
+                    SnackBar(content: Text('Task queued: ${data['task_id'] ?? 'unknown'} · waiting for ${targetPlatform} agent')),
                   );
                 } catch (error) {
                   setDialogState(() => feedback = error.toString().replaceFirst('Exception: ', ''));
