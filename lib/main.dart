@@ -284,7 +284,7 @@ class _ChatPageState extends State<ChatPage> {
                   if (!dialogContext.mounted || !mounted) return;
                   Navigator.pop(dialogContext);
                   messenger.showSnackBar(
-                    SnackBar(content: Text('Task queued: ${data['task_id'] ?? 'unknown'} · waiting for ${targetPlatform} agent')),
+                    SnackBar(content: Text('Task queued: ${data['task_id'] ?? 'unknown'} · waiting for $targetPlatform agent')),
                   );
                 } catch (error) {
                   setDialogState(() => feedback = error.toString().replaceFirst('Exception: ', ''));
