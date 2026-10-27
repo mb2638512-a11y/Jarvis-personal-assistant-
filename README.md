@@ -57,3 +57,14 @@ See [Postiz integration guide](docs/POSTIZ_INTEGRATION.md) and [shared client AP
 2. Run CI and verify a protected `GET /api/postiz/channels` request against a real Postiz workspace.
 3. Add Jarvis sign-in and per-user authorization before exposing social actions to remote clients.
 4. Wire both Android and Windows clients to the shared backend API and test each platform build.
+
+
+## Personal insights: usage, wellbeing and security
+
+- Android and shared web frontend now include an opt-in insights dashboard for app-use summaries, wellbeing check-ins, and client-reported security events.
+- Private API routes are under `/api/wellbeing`; they require `X-Jarvis-Gateway-Token` and `JARVIS_REMOTE_GATEWAY_TOKEN` on the backend.
+- `scripts/windows-usage-collector.py` is an opt-in Windows foreground-app timer. It reports executable names and durations only, not window titles or keystrokes.
+- Important: the Android Usage Access collector is **not implemented yet**. The Android dashboard can display submitted records, but does not automatically read phone usage until a native collector is built and permissioned.
+- Individual reels watched inside Instagram/YouTube/TikTok cannot be reliably inferred from Android app screen time. Reel counts stay unknown unless a reliable source explicitly reports them.
+- Health is voluntary journaling, not medical advice or diagnosis. Security events are reports, not a full antivirus scan.
+- Read [Personal Insights implementation and privacy notes](docs/PERSONAL_INSIGHTS.md). Shared-secret auth is an initial private-network safeguard, not a replacement for user accounts and per-device authorization.
