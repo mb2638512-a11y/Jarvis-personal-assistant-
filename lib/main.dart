@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'wellbeing_page.dart';
 import 'device_health_page.dart';
+import 'llm_settings_page.dart';
 
 void main() => runApp(const JarvisApp());
 
@@ -489,6 +490,13 @@ class _ChatPageState extends State<ChatPage> {
                 builder: (_) => DeviceHealthPage(backendUrl: baseUrl),
               )),
               icon: const Icon(Icons.memory_outlined),
+            ),
+            IconButton(
+              tooltip: 'LLM providers and model router',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const LlmSettingsPage(),
+              )),
+              icon: const Icon(Icons.account_tree_outlined),
             ),
             IconButton(
               tooltip: 'Backend settings',
