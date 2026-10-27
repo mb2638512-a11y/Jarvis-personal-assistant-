@@ -175,3 +175,97 @@ def list_security_events(
             (device_id, limit),
         ).fetchall()
     return {"device_id": device_id, "events": [dict(row) for row in rows]}
+
+
+# Device resource and security-posture snapshots. These are client-reported
+# readings, not a guarantee that the device is free from compromise.
+class DeviceMetrics(BaseModel):
+    device_id: str = Field(min_length=1, max_length=100)
+    platform: Literal["android", "windows"]
+    cpu_percent: float | None = Field(default=None, ge=0, le=100)
+    memory_percent: float | None = Field(default=None, ge=0, le=100)
+    memory_used_bytes: int | None = Field(default=None, ge=0)
+    memory_total_bytes: int | None = Field(default=None, ge=0)
+    disk_percent: float | None = Field(default=None, ge=0, le=100)
+    disk_free_bytes: int | None = Field(default=None, ge=0)
+    battery_percent: float | None = Field(default=None, ge=0, le=100)
+    battery_plugged: bool | None = None
+    temperature_c: float | None = Field(default=None, ge=-50, le=200)
+    network_sent_bytes: int | None = Field(default=None, ge=0)
+    network_received_bytes: int | None = Field(default=None, ge=0)
+    top_processes: list[dict[str, str | int | float]] = Field(default_factory=list, max_length=20)
+    observed_at: datetime | None = None
+
+
+class DeviceSecurityPosture(BaseModel):
+    device_id: str = Field(min_length=1, max_length=100)
+    platform: Literal["android", "windows"]
+    firewall_enabled: bool | None = None
+    antivirus_enabled: bool | None = None
+    realtime_protection: bool | None = None
+    disk_encryption: str | None = Field(default=None, max_length=80)
+    os_updates: str | None = Field(default=None, max_length=120)
+    screen_lock: str | None = Field(default=None, max_length=80)
+    risk_level: Literal["unknown", "low", "medium", "high", "critical"] = "unknown"
+    findings: list[str] = Field(default_factory=list, max_length=50)
+    observed_at: datetime | None = None
+
+
+def _ensure_device_tables(db: sqlite3.Connection) -> None:
+    db.execute("""CREATE TABLE IF NOT EXISTS device_metrics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, device_id TEXT NOT NULL, platform TEXT NOT NULL,
+      snapshot_json TEXT NOT NULL, observed_at TEXT NOT NULL, received_at TEXT NOT NULL
+    )""")
+    db.execute("""CREATE TABLE IF NOT EXISTS device_security (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, device_id TEXT NOT NULL, platform TEXT NOT NULL,
+      snapshot_json TEXT NOT NULL, observed_at TEXT NOT NULL, received_at TEXT NOT NULL
+    )""")
+    db.commit()
+
+
+@router.post("/device-metrics")
+def report_device_metrics(body: DeviceMetrics, x_jarvis_gateway_token: str | None = Header(default=None)) -> dict:
+    _authorize(x_jarvis_gateway_token)
+    import json
+    now = _now()
+    observed = (body.observed_at or datetime.now(timezone.utc)).isoformat()
+    with _connect() as db:
+        _ensure_device_tables(db)
+        db.execute("INSERT INTO device_metrics(device_id,platform,snapshot_json,observed_at,received_at) VALUES(?,?,?,?,?)",
+                   (body.device_id, body.platform, json.dumps(body.model_dump(mode="json")), observed, now))
+    return {"accepted": True, "received_at": now}
+
+
+@router.get("/device-metrics")
+def list_device_metrics(device_id: str = Query(min_length=1, max_length=100), limit: int = Query(default=30, ge=1, le=300), x_jarvis_gateway_token: str | None = Header(default=None)) -> dict:
+    _authorize(x_jarvis_gateway_token)
+    import json
+    with _connect() as db:
+        _ensure_device_tables(db)
+        rows = db.execute("SELECT snapshot_json,observed_at,received_at FROM device_metrics WHERE device_id=? ORDER BY id DESC LIMIT ?", (device_id, limit)).fetchall()
+    items = [json.loads(row["snapshot_json"]) | {"observed_at": row["observed_at"], "received_at": row["received_at"]} for row in rows]
+    return {"device_id": device_id, "snapshots": items, "latest": items[0] if items else None}
+
+
+@router.post("/device-security")
+def report_device_security(body: DeviceSecurityPosture, x_jarvis_gateway_token: str | None = Header(default=None)) -> dict:
+    _authorize(x_jarvis_gateway_token)
+    import json
+    now = _now()
+    observed = (body.observed_at or datetime.now(timezone.utc)).isoformat()
+    with _connect() as db:
+        _ensure_device_tables(db)
+        db.execute("INSERT INTO device_security(device_id,platform,snapshot_json,observed_at,received_at) VALUES(?,?,?,?,?)",
+                   (body.device_id, body.platform, json.dumps(body.model_dump(mode="json")), observed, now))
+    return {"accepted": True, "received_at": now}
+
+
+@router.get("/device-security")
+def list_device_security(device_id: str = Query(min_length=1, max_length=100), limit: int = Query(default=30, ge=1, le=200), x_jarvis_gateway_token: str | None = Header(default=None)) -> dict:
+    _authorize(x_jarvis_gateway_token)
+    import json
+    with _connect() as db:
+        _ensure_device_tables(db)
+        rows = db.execute("SELECT snapshot_json,observed_at,received_at FROM device_security WHERE device_id=? ORDER BY id DESC LIMIT ?", (device_id, limit)).fetchall()
+    items = [json.loads(row["snapshot_json"]) | {"observed_at": row["observed_at"], "received_at": row["received_at"]} for row in rows]
+    return {"device_id": device_id, "reports": items, "latest": items[0] if items else None}
