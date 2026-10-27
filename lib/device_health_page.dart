@@ -15,7 +15,7 @@ class _DeviceHealthPageState extends State<DeviceHealthPage> {
   final token = TextEditingController();
   final device = TextEditingController(text: 'my-android');
   bool busy = false;
-  String status = 'Enter your private gateway token and load reports.';
+  String status = 'Local device readings work without a server. Add a token only for optional sync.';
   Map<String, dynamic>? metrics;
   Map<String, dynamic>? security;
 
@@ -43,26 +43,40 @@ class _DeviceHealthPageState extends State<DeviceHealthPage> {
       setState(() => status = 'Use the Windows collector on PC; this button reads Android hardware.');
       return;
     }
-    if (token.text.trim().isEmpty || device.text.trim().isEmpty) {
-      setState(() => status = 'Enter token and device ID first.');
-      return;
-    }
-    setState(() { busy = true; status = 'Reading phone metrics…'; });
+    setState(() { busy = true; status = 'Reading phone locally…'; });
     try {
       const channel = MethodChannel('com.jarvis.assistant/device_insights');
       final raw = await channel.invokeMethod<Map<dynamic, dynamic>>('getDeviceMetrics');
       final body = Map<String, dynamic>.from(raw ?? {});
-      body['device_id'] = device.text.trim();
       body['platform'] = 'android';
       body['observed_at'] = DateTime.now().toUtc().toIso8601String();
-      final uri = endpoint('/api/wellbeing/device-metrics');
-      if (uri == null) throw Exception('Invalid backend URL.');
-      final response = await http.post(uri,
-        headers: {'Content-Type': 'application/json', 'X-Jarvis-Gateway-Token': token.text.trim()},
-        body: jsonEncode(body)).timeout(const Duration(seconds: 12));
-      if (response.statusCode < 200 || response.statusCode >= 300) throw Exception('Metrics upload failed: HTTP ${response.statusCode}');
-      await refresh();
-      if (mounted) setState(() => status = 'Phone RAM, storage and battery metrics submitted. CPU load is unavailable on this Android API.');
+      if (!mounted) return;
+      setState(() {
+        metrics = body;
+        security = {
+          'risk_level': 'unknown',
+          'firewall_enabled': null,
+          'antivirus_enabled': null,
+          'realtime_protection': null,
+          'disk_encryption': 'Not verified by Android app',
+          'os_updates': 'Not verified by Android app',
+          'screen_lock': 'Not verified by Android app',
+          'findings': ['Device security checks are not available from this local metrics API.'],
+        };
+        status = 'Local-only mode: readings stay on this device; no server is required.';
+      });
+      if (token.text.trim().isNotEmpty) {
+        if (device.text.trim().isEmpty) throw Exception('Enter a device ID to sync.');
+        final bodyForSync = Map<String, dynamic>.from(body)
+          ..['device_id'] = device.text.trim();
+        final uri = endpoint('/api/wellbeing/device-metrics');
+        if (uri == null) throw Exception('Invalid backend URL.');
+        final response = await http.post(uri,
+          headers: {'Content-Type': 'application/json', 'X-Jarvis-Gateway-Token': token.text.trim()},
+          body: jsonEncode(bodyForSync)).timeout(const Duration(seconds: 12));
+        if (response.statusCode < 200 || response.statusCode >= 300) throw Exception('Local reading succeeded, but sync failed: HTTP ${response.statusCode}');
+        if (mounted) setState(() => status = 'Local readings shown; optional shared-backend sync succeeded.');
+      }
     } on PlatformException catch (e) {
       if (mounted) setState(() => status = e.message ?? 'Phone metrics failed.');
     } catch (e) {
@@ -117,14 +131,14 @@ class _DeviceHealthPageState extends State<DeviceHealthPage> {
         const SizedBox(height: 12),
         TextField(controller: device, decoration: const InputDecoration(labelText: 'Device ID')),
         const SizedBox(height: 8),
-        TextField(controller: token, obscureText: true, decoration: const InputDecoration(labelText: 'Private gateway token')),
+        TextField(controller: token, obscureText: true, decoration: const InputDecoration(labelText: 'Optional sync token (leave empty for local-only mode)')),
         const SizedBox(height: 8),
-        FilledButton.icon(onPressed: busy ? null : refresh, icon: const Icon(Icons.sync), label: Text(busy ? 'Loading…' : 'Load reports')),
+        FilledButton.icon(onPressed: busy ? null : refresh, icon: const Icon(Icons.cloud_sync), label: Text(busy ? 'Loading…' : 'Load shared reports (optional)')),
         const SizedBox(height: 8),
         OutlinedButton.icon(onPressed: busy ? null : collectPhoneMetrics, icon: const Icon(Icons.phone_android), label: const Text('Read phone hardware metrics')),
         const SizedBox(height: 8), Text(status, style: const TextStyle(color: Color(0xff9bacc2))),
         const SizedBox(height: 14),
-        if (m == null) const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No hardware snapshot yet. Tap Read phone hardware metrics to submit RAM, storage and battery readings; Windows uses its opt-in collector.'))),
+        if (m == null) const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No local reading yet. On Android, tap Read phone hardware metrics. Shared reports are optional and require a backend.'))),
         if (m != null) ...[
           const Text('HARDWARE LOAD', style: TextStyle(color: Color(0xff70e4ff), letterSpacing: 1.5)),
           const SizedBox(height: 8),
