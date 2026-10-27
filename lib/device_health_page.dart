@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart';
 
 /// Displays hardware/security snapshots reported by a paired device collector.
 class DeviceHealthPage extends StatefulWidget {
@@ -35,6 +36,38 @@ class _DeviceHealthPageState extends State<DeviceHealthPage> {
       throw Exception(data is Map ? (data['detail']?.toString() ?? 'HTTP ${response.statusCode}') : 'HTTP ${response.statusCode}');
     }
     return data;
+  }
+
+  Future<void> collectPhoneMetrics() async {
+    if (Theme.of(context).platform != TargetPlatform.android) {
+      setState(() => status = 'Use the Windows collector on PC; this button reads Android hardware.');
+      return;
+    }
+    if (token.text.trim().isEmpty || device.text.trim().isEmpty) {
+      setState(() => status = 'Enter token and device ID first.');
+      return;
+    }
+    setState(() { busy = true; status = 'Reading phone metrics…'; });
+    try {
+      const channel = MethodChannel('com.jarvis.assistant/device_insights');
+      final raw = await channel.invokeMethod<Map<dynamic, dynamic>>('getDeviceMetrics');
+      final body = Map<String, dynamic>.from(raw ?? {});
+      body['device_id'] = device.text.trim();
+      body['platform'] = 'android';
+      body['observed_at'] = DateTime.now().toUtc().toIso8601String();
+      final uri = endpoint('/api/wellbeing/device-metrics');
+      if (uri == null) throw Exception('Invalid backend URL.');
+      final response = await http.post(uri,
+        headers: {'Content-Type': 'application/json', 'X-Jarvis-Gateway-Token': token.text.trim()},
+        body: jsonEncode(body)).timeout(const Duration(seconds: 12));
+      if (response.statusCode < 200 || response.statusCode >= 300) throw Exception('Metrics upload failed: HTTP ${response.statusCode}');
+      await refresh();
+      if (mounted) setState(() => status = 'Phone RAM, storage and battery metrics submitted. CPU load is unavailable on this Android API.');
+    } on PlatformException catch (e) {
+      if (mounted) setState(() => status = e.message ?? 'Phone metrics failed.');
+    } catch (e) {
+      if (mounted) setState(() => status = e.toString().replaceFirst('Exception: ', ''));
+    } finally { if (mounted) setState(() => busy = false); }
   }
 
   Future<void> refresh() async {
@@ -87,9 +120,11 @@ class _DeviceHealthPageState extends State<DeviceHealthPage> {
         TextField(controller: token, obscureText: true, decoration: const InputDecoration(labelText: 'Private gateway token')),
         const SizedBox(height: 8),
         FilledButton.icon(onPressed: busy ? null : refresh, icon: const Icon(Icons.sync), label: Text(busy ? 'Loading…' : 'Load reports')),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(onPressed: busy ? null : collectPhoneMetrics, icon: const Icon(Icons.phone_android), label: const Text('Read phone hardware metrics')),
         const SizedBox(height: 8), Text(status, style: const TextStyle(color: Color(0xff9bacc2))),
         const SizedBox(height: 14),
-        if (m == null) const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No hardware snapshot yet. A native Android collector with user-granted permissions still needs to be implemented; Windows can report through its opt-in collector.'))),
+        if (m == null) const Card(child: Padding(padding: EdgeInsets.all(16), child: Text('No hardware snapshot yet. Tap Read phone hardware metrics to submit RAM, storage and battery readings; Windows uses its opt-in collector.'))),
         if (m != null) ...[
           const Text('HARDWARE LOAD', style: TextStyle(color: Color(0xff70e4ff), letterSpacing: 1.5)),
           const SizedBox(height: 8),
