@@ -61,7 +61,13 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
         setState(() {
           _providers.addAll(decoded.whereType<Map>().map((e) => Map<String, dynamic>.from(e)));
           _activeId = _providers.isEmpty ? null : _providers.first['id'] as String?;
-          if (_providers.isNotEmpty) _selectProvider(_activeId);
+          if (_providers.isNotEmpty) {
+            final first = _providers.first;
+            _model.text = first['model'] as String? ?? '';
+            _task = first['task'] as String? ?? 'general';
+            _routingMode = first['routingMode'] as String? ?? 'automatic';
+            _models = (first['models'] as List? ?? []).whereType<String>().toList();
+          }
         });
       }
     } catch (_) {
@@ -148,6 +154,7 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
     setState(() {
       _activeId = id; _model.text = p['model'] as String? ?? '';
       _task = p['task'] as String? ?? 'general';
+      _routingMode = p['routingMode'] as String? ?? 'automatic';
       _models = (p['models'] as List? ?? []).whereType<String>().toList();
       _status = 'Selected \${p['name']}. Sync to refresh its model catalogue.';
     });
