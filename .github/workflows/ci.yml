@@ -10,12 +10,18 @@ on:
       - "jarvis_api/**"
       - "tests/**"
       - "pyproject.toml"
+      - ".gitmodules"
+      - "backend/vendor/**"
+      - "docs/THREE_REPO_INTEGRATION_REPORT.md"
       - ".github/workflows/ci.yml"
   pull_request:
     paths:
       - "jarvis_api/**"
       - "tests/**"
       - "pyproject.toml"
+      - ".gitmodules"
+      - "backend/vendor/**"
+      - "docs/THREE_REPO_INTEGRATION_REPORT.md"
       - ".github/workflows/ci.yml"
 
 permissions:

@@ -3,6 +3,8 @@ name: Jarvis Windows and Android Release
 on:
   workflow_dispatch:
   push:
+    branches:
+      - feature/vendor-three-repos
     tags:
       - "v*"
 
@@ -11,7 +13,7 @@ permissions:
 
 jobs:
   windows-source-package:
-    name: Package Windows backend source (not an EXE)
+    name: Verify backend and package Windows source
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,12 +25,16 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
-          ruff check .
+          ruff check jarvis_api tests windows
           pytest -q
-      - name: Package source
+      - name: Package shared backend and integration source
         shell: pwsh
         run: |
-          Compress-Archive -Path jarvis_api, tests, web, windows, pyproject.toml, README.md, .env.example -DestinationPath Jarvis-Windows-Backend-Source.zip
+          foreach ($repo in @("backend/vendor/postiz-app", "backend/vendor/artemis", "backend/vendor/atticus-windows")) {
+            if (!(Test-Path (Join-Path $repo "UPSTREAM_README.md"))) { throw "Vendored upstream source missing: $repo" }
+          }
+          if (!(Test-Path "backend/vendor/postiz-app/LICENSE")) { throw "Postiz upstream license file missing" }
+          Compress-Archive -Path jarvis_api, tests, web, windows, backend/vendor, docs, scripts, pyproject.toml, README.md, .env.example -DestinationPath Jarvis-Windows-Backend-Source.zip
       - uses: actions/upload-artifact@v4
         with:
           name: Jarvis-Windows-Backend-Source
@@ -36,17 +42,22 @@ jobs:
           if-no-files-found: error
 
   windows-desktop-build:
-    name: Build Windows desktop app
+    name: Build Windows desktop EXE
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
+      - name: Install build dependencies
+        run: python -m pip install --upgrade pip pyinstaller
       - name: Build executable
+        run: pyinstaller --noconfirm --clean --onefile --windowed --name Jarvis windows/jarvis_desktop.py
+      - name: Verify executable exists
+        shell: pwsh
         run: |
-          python -m pip install --upgrade pip pyinstaller
-          pyinstaller --noconfirm --onefile --windowed --name Jarvis windows/jarvis_desktop.py
+          if (!(Test-Path "dist/Jarvis.exe")) { throw "Jarvis.exe was not produced" }
+          Get-Item "dist/Jarvis.exe" | Select-Object Name,Length
       - uses: actions/upload-artifact@v4
         with:
           name: Jarvis-Windows-Desktop
@@ -54,57 +65,32 @@ jobs:
           if-no-files-found: error
 
   android-build:
-    name: Build Android APK if Android project exists
+    name: Build Android release APK
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Detect Android source
-        id: detect
-        shell: bash
-        run: |
-          if [ -f gradlew ] || [ -f android/gradlew ] || [ -f pubspec.yaml ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-          fi
-      - name: Explain missing Android client
-        if: steps.detect.outputs.present == 'false'
-        run: |
-          echo "No Android/Flutter app source is present in this repository yet. No APK was generated; this prevents publishing a fake or nonfunctional installer." > ANDROID-BUILD-NOT-READY.txt
-      - name: Build Flutter APK
-        if: steps.detect.outputs.present == 'true' && hashFiles('pubspec.yaml') != ''
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
-      - name: Generate missing Flutter Android scaffolding
-        if: steps.detect.outputs.present == 'true' && hashFiles('pubspec.yaml') != ''
+          cache: true
+      - name: Verify Flutter project and create Android scaffolding
         run: |
-          if [ ! -d android ]; then flutter create --platforms=android .; fi
-      - name: Build Flutter release APK
-        if: steps.detect.outputs.present == 'true' && hashFiles('pubspec.yaml') != ''
-        run: |
+          flutter --version
           flutter pub get
-          flutter build apk --release
-      - name: Build Gradle Android APK
-        if: steps.detect.outputs.present == 'true' && hashFiles('pubspec.yaml') == ''
-        run: |
-          chmod +x ./gradlew 2>/dev/null || chmod +x ./android/gradlew
-          if [ -f gradlew ]; then ./gradlew assembleRelease; else cd android && ./gradlew assembleRelease; fi
-      - name: Upload Android APK
-        if: steps.detect.outputs.present == 'true'
-        uses: actions/upload-artifact@v4
+          if [ ! -d android ]; then flutter create --platforms=android --org com.jarvis.assistant .; fi
+      - name: Analyze Flutter app
+        run: flutter analyze
+      - name: Run Flutter tests
+        run: flutter test
+      - name: Build release APK
+        run: flutter build apk --release
+      - name: Verify APK exists
+        run: test -s build/app/outputs/flutter-apk/app-release.apk
+      - uses: actions/upload-artifact@v4
         with:
           name: Jarvis-Android-APK
-          path: |
-            **/build/outputs/apk/release/*.apk
-            **/build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
-      - name: Upload Android status
-        if: steps.detect.outputs.present == 'false'
-        uses: actions/upload-artifact@v4
-        with:
-          name: Android-build-not-ready
-          path: ANDROID-BUILD-NOT-READY.txt
 
   publish-release:
     name: Publish downloadable GitHub Release

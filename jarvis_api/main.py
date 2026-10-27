@@ -7,10 +7,16 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from jarvis_api.config import settings
+from jarvis_api.integrations import router as integrations_router
 from jarvis_api.postiz import router as postiz_router
+from jarvis_api.remote_control import router as remote_control_router
+from jarvis_api.social_oauth import router as social_oauth_router
 
 app = FastAPI(title="Jarvis Personal Assistant API", version="0.2.0")
 app.include_router(postiz_router)
+app.include_router(integrations_router)
+app.include_router(social_oauth_router)
+app.include_router(remote_control_router)
 
 
 class ChatRequest(BaseModel):
@@ -43,7 +49,8 @@ async def status() -> dict[str, object]:
         "provider": "openai-compatible",
         "configured": configured,
         "ready": configured,
-        "postiz_configured": bool(settings.postiz_api_key.strip()),
+        "postiz_configured": bool(settings.postiz_app_url.strip() or settings.postiz_api_key.strip()),
+        "social_oauth_configured": bool(settings.postiz_app_url.strip()),
         "note": "Configuration status only; a successful provider request has not been verified by this endpoint.",
     }
 

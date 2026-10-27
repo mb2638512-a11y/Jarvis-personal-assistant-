@@ -1,0 +1,51 @@
+name: Vendor and Jarvis-brand upstream projects
+
+on:
+  push:
+    branches:
+      - feature/vendor-three-repos
+    paths:
+      - scripts/vendor_and_rebrand.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  vendor-source:
+    if: github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'Vendor full upstream source')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout Jarvis branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/vendor-three-repos
+          fetch-depth: 0
+          submodules: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Remove submodule pointers so complete source can be placed in-tree
+        run: |
+          git rm -f .gitmodules || true
+          git rm -rf backend/vendor/atticus-windows backend/vendor/artemis backend/vendor/postiz-app || true
+          rm -rf backend/vendor/atticus-windows backend/vendor/artemis backend/vendor/postiz-app
+          mkdir -p backend/vendor
+      - name: Clone full upstream histories and apply safe Jarvis branding
+        run: |
+          python3 scripts/vendor_and_rebrand.py
+          test -s backend/vendor/atticus-windows/UPSTREAM_README.md
+          test -s backend/vendor/artemis/UPSTREAM_README.md
+          test -s backend/vendor/postiz-app/UPSTREAM_README.md
+          test -s backend/vendor/postiz-app/LICENSE
+          git status --short
+      - name: Commit vendored source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Vendored source is already current; no commit required."
+            exit 0
+          fi
+          git commit -m "Vendor full upstream source and apply Jarvis branding"
+          git push origin HEAD:feature/vendor-three-repos

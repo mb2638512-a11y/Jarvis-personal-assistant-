@@ -2,7 +2,7 @@ name: Python CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/vendor-three-repos]
   pull_request:
   workflow_dispatch:
 
@@ -20,7 +20,7 @@ jobs:
           cache: pip
       - name: Install package
         run: python -m pip install -e ".[dev]"
-      - name: Lint
-        run: ruff check .
-      - name: Test
+      - name: Lint Jarvis-owned code only
+        run: ruff check jarvis_api tests
+      - name: Test Jarvis backend
         run: pytest -q
