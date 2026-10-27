@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field, field_validator
 from jarvis_api.config import settings
 from jarvis_api.integrations import router as integrations_router
 from jarvis_api.postiz import router as postiz_router
-from jarvis_api.social_oauth import router as social_oauth_router
 from jarvis_api.remote_control import router as remote_control_router
+from jarvis_api.social_oauth import router as social_oauth_router
 
 app = FastAPI(title="Jarvis Personal Assistant API", version="0.2.0")
 app.include_router(postiz_router)
