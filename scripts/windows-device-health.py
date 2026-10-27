@@ -9,6 +9,7 @@ import os
 import platform
 import time
 from datetime import datetime, timezone
+from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 import psutil
@@ -19,8 +20,15 @@ BASE = os.environ.get("JARVIS_BACKEND_URL", "").rstrip("/")
 TOKEN = os.environ.get("JARVIS_REMOTE_GATEWAY_TOKEN", "")
 DEVICE = os.environ.get("JARVIS_DEVICE_ID", "my-windows")
 INTERVAL = max(10, min(int(os.environ.get("JARVIS_HEALTH_INTERVAL_SECONDS", "30")), 300))
-if not (BASE.startswith("https://") or BASE.startswith("http://localhost") or BASE.startswith("http://127.0.0.1")):
-    raise SystemExit("Use HTTPS for remote backend; HTTP only for localhost.")
+try:
+    parsed_base = urlsplit(BASE)
+    safe_remote = parsed_base.scheme == "https" and bool(parsed_base.hostname)
+    safe_local = parsed_base.scheme == "http" and parsed_base.hostname in {"localhost", "127.0.0.1"}
+    has_credentials = parsed_base.username is not None or parsed_base.password is not None
+except ValueError:
+    raise SystemExit("Invalid JARVIS_BACKEND_URL.") from None
+if not (safe_remote or safe_local) or has_credentials:
+    raise SystemExit("Use a valid HTTPS URL for remote backend; HTTP only for localhost/127.0.0.1, without URL credentials.")
 if not TOKEN:
     raise SystemExit("Set JARVIS_REMOTE_GATEWAY_TOKEN in environment.")
 
