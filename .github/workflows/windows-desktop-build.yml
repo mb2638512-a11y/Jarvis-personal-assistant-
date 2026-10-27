@@ -1,0 +1,58 @@
+name: Jarvis Windows Desktop Build
+
+on:
+  push:
+    branches: [android]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jarvis-windows-build
+  cancel-in-progress: true
+
+jobs:
+  windows-desktop:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout shared Jarvis app
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate missing desktop scaffolding
+        shell: pwsh
+        run: |
+          flutter --version
+          if (!(Test-Path "windows/CMakeLists.txt")) {
+            flutter create --platforms=windows,android --org com.jarvis.assistant .
+          }
+          flutter pub get
+
+      - name: Analyze shared Flutter app
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+      - name: Build Windows desktop app
+        run: flutter build windows --release
+
+      - name: Verify Windows executable
+        shell: pwsh
+        run: |
+          $exe = "build/windows/x64/runner/Release/jarvis_personal_assistant.exe"
+          if (!(Test-Path $exe)) { throw "Windows executable not found: $exe" }
+
+      - name: Upload Windows release folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-windows-x64-release
+          path: build/windows/x64/runner/Release/
+          if-no-files-found: error
+          retention-days: 14
