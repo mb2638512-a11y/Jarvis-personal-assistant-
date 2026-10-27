@@ -53,7 +53,7 @@ def execute(task: dict) -> dict:
         return {"opened": True, "url": url}
     if kind == "open_app":
         app = str(payload.get("app", "")).lower()
-        if app not in APP_ALLOWLIST:
+        if app != "settings" and app not in APP_ALLOWLIST:
             raise ValueError("App is not allowlisted")
         if app == "settings":
             os.startfile("ms-settings:")
