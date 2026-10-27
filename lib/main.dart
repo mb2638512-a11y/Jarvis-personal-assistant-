@@ -164,6 +164,7 @@ class _ChatPageState extends State<ChatPage> {
     final tokenController = TextEditingController();
     final valueController = TextEditingController();
     String action = 'get_status';
+    String targetPlatform = 'windows';
     bool confirmed = false;
     String? feedback;
     await showDialog<void>(
@@ -187,6 +188,16 @@ class _ChatPageState extends State<ChatPage> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
+                    value: targetPlatform,
+                    decoration: const InputDecoration(labelText: 'Target device'),
+                    items: const [
+                      DropdownMenuItem(value: 'windows', child: Text('Windows PC')),
+                      DropdownMenuItem(value: 'android', child: Text('Android device via authorized ADB bridge')),
+                    ],
+                    onChanged: (value) => setDialogState(() => targetPlatform = value ?? 'windows'),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
                     value: action,
                     decoration: const InputDecoration(labelText: 'Action'),
                     items: const [
@@ -207,7 +218,7 @@ class _ChatPageState extends State<ChatPage> {
                       maxLines: action == 'type_text' ? 3 : 1,
                       decoration: InputDecoration(
                         labelText: action == 'open_url' ? 'HTTPS URL' :
-                          action == 'open_app' ? 'App: notepad, calculator, explorer, chrome, edge, firefox, settings' :
+                          action == 'open_app' ? (targetPlatform == 'windows' ? 'App: notepad, calculator, explorer, chrome, edge, firefox, settings' : 'App: chrome, settings, youtube, maps') :
                           action == 'type_text' ? 'Text to type' :
                           'Key: ENTER, ESC, TAB, CTRL+C, CTRL+V, CTRL+S, ALT+TAB, WIN',
                       ),
@@ -257,7 +268,7 @@ class _ChatPageState extends State<ChatPage> {
                       'X-Jarvis-Remote-Token': token,
                     },
                     body: jsonEncode({
-                      'target_platform': 'windows',
+                      'target_platform': targetPlatform,
                       'kind': action,
                       'payload': payload,
                       'user_confirmed': confirmed,
