@@ -20,17 +20,19 @@ BASE = os.environ.get("JARVIS_BACKEND_URL", "").rstrip("/")
 TOKEN = os.environ.get("JARVIS_REMOTE_GATEWAY_TOKEN", "")
 DEVICE = os.environ.get("JARVIS_DEVICE_ID", "my-windows")
 INTERVAL = max(10, min(int(os.environ.get("JARVIS_HEALTH_INTERVAL_SECONDS", "30")), 300))
-try:
-    parsed_base = urlsplit(BASE)
-    safe_remote = parsed_base.scheme == "https" and bool(parsed_base.hostname)
-    safe_local = parsed_base.scheme == "http" and parsed_base.hostname in {"localhost", "127.0.0.1"}
-    has_credentials = parsed_base.username is not None or parsed_base.password is not None
-except ValueError:
-    raise SystemExit("Invalid JARVIS_BACKEND_URL.") from None
-if not (safe_remote or safe_local) or has_credentials:
-    raise SystemExit("Use a valid HTTPS URL for remote backend; HTTP only for localhost/127.0.0.1, without URL credentials.")
-if not TOKEN:
-    raise SystemExit("Set JARVIS_REMOTE_GATEWAY_TOKEN in environment.")
+SYNC_ENABLED = bool(BASE or TOKEN)
+if SYNC_ENABLED:
+    if not BASE or not TOKEN:
+        raise SystemExit("For optional sync, set both JARVIS_BACKEND_URL and JARVIS_REMOTE_GATEWAY_TOKEN; otherwise leave both empty for local-only mode.")
+    try:
+        parsed_base = urlsplit(BASE)
+        safe_remote = parsed_base.scheme == "https" and bool(parsed_base.hostname)
+        safe_local = parsed_base.scheme == "http" and parsed_base.hostname in {"localhost", "127.0.0.1"}
+        has_credentials = parsed_base.username is not None or parsed_base.password is not None
+    except ValueError:
+        raise SystemExit("Invalid JARVIS_BACKEND_URL.") from None
+    if not (safe_remote or safe_local) or has_credentials:
+        raise SystemExit("Use a valid HTTPS URL for remote backend; HTTP only for localhost/127.0.0.1, without URL credentials.")
 
 def collect():
     vm = psutil.virtual_memory()
@@ -64,14 +66,19 @@ def collect():
     }
 
 def main():
-    print("Jarvis hardware monitoring active; Ctrl+C stops it.")
+    mode = "optional shared-backend sync" if SYNC_ENABLED else "local-only (no server, no network upload)"
+    print(f"Jarvis hardware monitor active in {mode}; Ctrl+C stops it.")
     while True:
         try:
-            body = json.dumps(collect()).encode()
-            req = Request(BASE + "/api/wellbeing/device-metrics", data=body, method="POST",
-                headers={"Content-Type":"application/json","X-Jarvis-Gateway-Token":TOKEN})
-            with urlopen(req, timeout=12) as response:
-                print(datetime.now().isoformat(timespec="seconds"), "report sent", response.status)
+            report = collect()
+            if SYNC_ENABLED:
+                body = json.dumps(report).encode()
+                req = Request(BASE + "/api/wellbeing/device-metrics", data=body, method="POST",
+                    headers={"Content-Type":"application/json","X-Jarvis-Gateway-Token":TOKEN})
+                with urlopen(req, timeout=12) as response:
+                    print(datetime.now().isoformat(timespec="seconds"), "report sent", response.status)
+            else:
+                print(json.dumps(report, indent=2))
         except Exception as exc:
             print("Hardware report failed:", exc)
         time.sleep(INTERVAL)
