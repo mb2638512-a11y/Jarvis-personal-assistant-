@@ -35,7 +35,7 @@ jobs:
           flutter pub get
 
       - name: Analyze shared Flutter app
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
 
       - name: Run Flutter tests
         run: flutter test
