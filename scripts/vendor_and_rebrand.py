@@ -21,20 +21,21 @@ def main():
                 raise RuntimeError("Refusing to overwrite non-empty vendor path: " + item["path"])
             target.rmdir()
         target.parent.mkdir(parents=True, exist_ok=True)
-        run(["git", "clone", "--depth", "1", item["url"], str(target)])
+        # Full clone (not a shallow clone): preserve complete upstream history.
+        run(["git", "clone", item["url"], str(target)])
         upstream_readme = target / "README.md"
         if upstream_readme.exists():
             original = upstream_readme.read_text(encoding="utf-8", errors="replace")
             (target / "UPSTREAM_README.md").write_text(original, encoding="utf-8")
-            match = re.search(r"(?m)^#\\s+(.+)$", original)
+            match = re.search(r"(?m)^#\s+(.+)$", original)
             upstream_title = match.group(1) if match else item["old"]
             upstream_readme.write_text(
-                "# " + item["label"] + "\\n\\n"
-                "Jarvis integration bundle containing upstream project source.\\n\\n"
-                "**Upstream project:** " + upstream_title + "\\n"
-                "**Upstream repository:** " + item["url"] + "\\n\\n"
+                "# " + item["label"] + "\n\n"
+                "Jarvis integration bundle containing upstream project source.\n\n"
+                "**Upstream project:** " + upstream_title + "\n"
+                "**Upstream repository:** " + item["url"] + "\n\n"
                 "Original licenses and copyright notices remain authoritative. See "
-                "UPSTREAM_README.md and the included license files.\\n",
+                "UPSTREAM_README.md and the included license files.\n",
                 encoding="utf-8")
         for package_file in (target / "package.json", target / "apps" / "frontend" / "package.json"):
             if package_file.is_file():
@@ -44,16 +45,16 @@ def main():
                         data["jarvisUpstreamPackageName"] = data["name"]
                         if item["old"].lower() in data["name"].lower():
                             data["name"] = re.sub(item["old"], "jarvis", data["name"], flags=re.I)
-                        package_file.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\\n", encoding="utf-8")
+                        package_file.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
                 except (json.JSONDecodeError, UnicodeDecodeError):
                     print("Skipped non-standard package metadata: " + str(package_file), file=sys.stderr)
         (target / "JARVIS_BRANDING.md").write_text(
-            "# Jarvis branding and provenance\\n\\n"
-            "Integrated as: **" + item["label"] + "**.\\n\\n"
-            "Upstream source: " + item["url"] + "\\n\\n"
+            "# Jarvis branding and provenance\n\n"
+            "Integrated as: **" + item["label"] + "**.\n\n"
+            "Upstream source: " + item["url"] + "\n\n"
             "Branding is limited to the top-level README and safe package metadata. "
             "Internal symbols and protocol names remain unchanged to preserve compatibility. "
-            "Keep all upstream licenses and attribution.\\n", encoding="utf-8")
+            "Keep all upstream licenses and attribution.\n", encoding="utf-8")
     return 0
 
 if __name__ == "__main__":
