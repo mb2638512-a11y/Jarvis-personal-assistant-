@@ -37,7 +37,7 @@ def request(path: str, method: str = "GET", body: dict | None = None) -> dict:
         BASE_URL + path,
         data=payload,
         method=method,
-        headers={"X-Jarvis-Remote-Token": TOKEN, "Content-Type": "application/json"},
+        headers={"X-Jarvis-Remote-Token": TOKEN, "X-Jarvis-Agent-Id": AGENT_ID, "Content-Type": "application/json"},
     )
     with urllib.request.urlopen(req, timeout=10) as response:
         return json.loads(response.read().decode("utf-8"))
