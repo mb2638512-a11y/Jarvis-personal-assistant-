@@ -5,8 +5,11 @@ $Base = $env:JARVIS_BACKEND_URL.TrimEnd("/")
 $Token = $env:JARVIS_REMOTE_GATEWAY_TOKEN
 $Device = if ($env:JARVIS_DEVICE_ID) { $env:JARVIS_DEVICE_ID } else { "my-windows" }
 if (-not $Token) { throw "Set JARVIS_REMOTE_GATEWAY_TOKEN in your environment." }
-if (-not ($Base.StartsWith("https://") -or $Base.StartsWith("http://localhost") -or $Base.StartsWith("http://127.0.0.1"))) {
-  throw "Use HTTPS for remote backend; HTTP is allowed only on localhost."
+try { $BaseUri = [Uri]$Base } catch { throw "JARVIS_BACKEND_URL must be a valid absolute URL." }
+$SafeRemote = $BaseUri.Scheme -eq "https" -and -not $BaseUri.UserInfo
+$SafeLocal = $BaseUri.Scheme -eq "http" -and $BaseUri.Host -in @("localhost", "127.0.0.1") -and -not $BaseUri.UserInfo
+if (-not ($SafeRemote -or $SafeLocal)) {
+  throw "Use HTTPS for remote backend; HTTP is allowed only for exact localhost/127.0.0.1, without URL credentials."
 }
 
 $Defender = $null
@@ -33,5 +36,5 @@ $Payload = @{
   risk_level = $Risk; findings = @($Findings); observed_at = [DateTime]::UtcNow.ToString("o")
 } | ConvertTo-Json -Depth 5
 
-Invoke-RestMethod -Method Post -Uri "$Base/api/wellbeing/device-security" -Headers @{ "X-Jarvis-Gateway-Token" = $Token } -ContentType "application/json" -Body $Payload | Out-Null
+Invoke-RestMethod -Method Post -Uri "$Base/api/wellbeing/device-security" -Headers @{ "X-Jarvis-Gateway-Token" = $Token } -ContentType "application/json" -Body $Payload -TimeoutSec 12 | Out-Null
 Write-Host "Jarvis received the Windows security posture snapshot. Unknown checks remain unknown."
