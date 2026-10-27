@@ -1,0 +1,71 @@
+name: Jarvis Android Latest Release
+
+on:
+  push:
+    branches:
+      - android
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: jarvis-android-latest-release
+  cancel-in-progress: true
+
+jobs:
+  build-and-publish:
+    name: Build and publish latest Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Android branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies and ensure Android scaffolding
+        run: |
+          flutter --version
+          flutter pub get
+          if [ ! -d android ]; then
+            flutter create --platforms=android --org com.jarvis.assistant .
+          fi
+
+      - name: Analyze app
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Verify APK
+        run: test -s build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Replace previous Android release and tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-latest --yes || true
+          git push origin :refs/tags/android-latest || true
+          git tag -f android-latest "$GITHUB_SHA"
+          git push origin refs/tags/android-latest
+
+      - name: Publish latest APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Jarvis Android — Latest
+          body: |
+            Automatically replaced by each successful build on the `android` branch.
+            This release intentionally keeps only the newest APK.
+          files: build/app/outputs/flutter-apk/app-release.apk
+          overwrite_files: true
+          make_latest: true
