@@ -161,6 +161,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> remoteControl() async {
+    final messenger = ScaffoldMessenger.of(context);
     final tokenController = TextEditingController();
     final valueController = TextEditingController();
     String action = 'get_status';
@@ -188,7 +189,7 @@ class _ChatPageState extends State<ChatPage> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: targetPlatform,
+                    initialValue: targetPlatform,
                     decoration: const InputDecoration(labelText: 'Target device'),
                     items: const [
                       DropdownMenuItem(value: 'windows', child: Text('Windows PC')),
@@ -198,7 +199,7 @@ class _ChatPageState extends State<ChatPage> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: action,
+                    initialValue: action,
                     decoration: const InputDecoration(labelText: 'Action'),
                     items: const [
                       DropdownMenuItem(value: 'get_status', child: Text('Get PC status')),
@@ -282,7 +283,7 @@ class _ChatPageState extends State<ChatPage> {
                   }
                   if (!mounted) return;
                   Navigator.pop(dialogContext);
-                  ScaffoldMessenger.of(this.context).showSnackBar(
+                  messenger.showSnackBar(
                     SnackBar(content: Text('Task queued: ${data['task_id'] ?? 'unknown'} · waiting for Windows agent')),
                   );
                 } catch (error) {
