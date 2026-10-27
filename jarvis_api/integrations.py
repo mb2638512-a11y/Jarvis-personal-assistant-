@@ -28,7 +28,7 @@ def integration_status() -> dict[str, Any]:
     for item in INTEGRATIONS:
         source_path = VENDOR_ROOT / item["vendor_path"]
         source_present = (source_path / "UPSTREAM_README.md").is_file()
-        configured = item["id"] == "postiz" and bool(settings.postiz_api_key.strip())
+        configured = item["id"] == "postiz" and bool(settings.postiz_app_url.strip() or settings.postiz_api_key.strip())
         results.append({**item, "source_present": source_present, "configured": configured, "live_connected": False, "ready": False, "note": ("Both clients can request this capability through the shared backend, but the required paired device agent and authenticated task transport are not implemented." if item["requires_device_agent"] else "Both clients use the same server-side adapter; live credentials and upstream connectivity must be verified.")})
     return {"shared_backend": True, "client_platforms": ["windows", "android"], "integrations": results, "production_ready": False}
 
