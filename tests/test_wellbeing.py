@@ -12,6 +12,13 @@ def test_wellbeing_routes_require_gateway_token(monkeypatch, tmp_path):
     response = client.get("/api/wellbeing/usage", params={"device_id": "phone"})
     assert response.status_code == 401
 
+    wrong_token = client.get(
+        "/api/wellbeing/usage",
+        params={"device_id": "phone"},
+        headers={"X-Jarvis-Gateway-Token": "wrong-secret"},
+    )
+    assert wrong_token.status_code == 401
+
     response = client.post(
         "/api/wellbeing/usage",
         headers={"X-Jarvis-Gateway-Token": "test-secret"},
