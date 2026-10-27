@@ -160,6 +160,134 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  Future<void> remoteControl() async {
+    final tokenController = TextEditingController();
+    final valueController = TextEditingController();
+    String action = 'get_status';
+    bool confirmed = false;
+    String? feedback;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Remote PC control'),
+          content: SizedBox(
+            width: 460,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Connect to your paired Windows agent through the shared Jarvis backend. The Windows agent must be running.'),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: tokenController,
+                    obscureText: true,
+                    autocorrect: false,
+                    decoration: const InputDecoration(labelText: 'Private remote gateway token'),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: action,
+                    decoration: const InputDecoration(labelText: 'Action'),
+                    items: const [
+                      DropdownMenuItem(value: 'get_status', child: Text('Get PC status')),
+                      DropdownMenuItem(value: 'open_url', child: Text('Open HTTPS website')),
+                      DropdownMenuItem(value: 'open_app', child: Text('Open allowlisted app')),
+                      DropdownMenuItem(value: 'screenshot', child: Text('Save screenshot on PC')),
+                      DropdownMenuItem(value: 'type_text', child: Text('Type text (confirm required)')),
+                      DropdownMenuItem(value: 'press_key', child: Text('Press safe key (confirm required)')),
+                    ],
+                    onChanged: (value) => setDialogState(() => action = value ?? 'get_status'),
+                  ),
+                  if (['open_url', 'open_app', 'type_text', 'press_key'].contains(action)) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: valueController,
+                      maxLength: action == 'type_text' ? 4000 : 2048,
+                      maxLines: action == 'type_text' ? 3 : 1,
+                      decoration: InputDecoration(
+                        labelText: action == 'open_url' ? 'HTTPS URL' :
+                          action == 'open_app' ? 'App: notepad, calculator, explorer, chrome, edge, firefox, settings' :
+                          action == 'type_text' ? 'Text to type' :
+                          'Key: ENTER, ESC, TAB, CTRL+C, CTRL+V, CTRL+S, ALT+TAB, WIN',
+                      ),
+                    ),
+                  ],
+                  if (action == 'type_text' || action == 'press_key')
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: confirmed,
+                      onChanged: (value) => setDialogState(() => confirmed = value ?? false),
+                      title: const Text('I confirm this action on my PC'),
+                    ),
+                  if (feedback != null) Text(feedback!, style: const TextStyle(color: Colors.orangeAccent)),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
+            FilledButton(
+              onPressed: () async {
+                final token = tokenController.text.trim();
+                if (token.isEmpty) {
+                  setDialogState(() => feedback = 'Enter the private gateway token.');
+                  return;
+                }
+                if (['type_text', 'press_key'].contains(action) && !confirmed) {
+                  setDialogState(() => feedback = 'Confirm typing/key action first.');
+                  return;
+                }
+                final value = valueController.text.trim();
+                final payload = <String, dynamic>{};
+                if (action == 'open_url') payload['url'] = value;
+                if (action == 'open_app') payload['app'] = value;
+                if (action == 'type_text') payload['text'] = value;
+                if (action == 'press_key') payload['key'] = value;
+                final uri = _endpoint('/api/remote/tasks');
+                if (uri == null) {
+                  setDialogState(() => feedback = 'Set a valid backend URL in Settings.');
+                  return;
+                }
+                try {
+                  final response = await http.post(
+                    uri,
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'X-Jarvis-Remote-Token': token,
+                    },
+                    body: jsonEncode({
+                      'target_platform': 'windows',
+                      'kind': action,
+                      'payload': payload,
+                      'user_confirmed': confirmed,
+                    }),
+                  ).timeout(const Duration(seconds: 10));
+                  dynamic data;
+                  try { data = jsonDecode(response.body); } on FormatException { data = {}; }
+                  if (response.statusCode < 200 || response.statusCode >= 300) {
+                    final detail = data is Map ? data['detail'] : null;
+                    throw Exception(detail?.toString() ?? 'Request failed (HTTP ${response.statusCode}).');
+                  }
+                  if (!mounted) return;
+                  Navigator.pop(dialogContext);
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    SnackBar(content: Text('Task queued: ${data['task_id'] ?? 'unknown'} · waiting for Windows agent')),
+                  );
+                } catch (error) {
+                  setDialogState(() => feedback = error.toString().replaceFirst('Exception: ', ''));
+                }
+              },
+              child: const Text('Queue action'),
+            ),
+          ],
+        ),
+      ),
+    );
+    tokenController.dispose();
+    valueController.dispose();
+  }
+
   Future<void> send() async {
     final text = input.text.trim();
     if (text.isEmpty || busy) return;
@@ -328,6 +456,11 @@ class _ChatPageState extends State<ChatPage> {
               tooltip: 'Connect social accounts (OAuth)',
               onPressed: openSocialHub,
               icon: const Icon(Icons.hub_outlined),
+            ),
+            IconButton(
+              tooltip: 'Remote PC control',
+              onPressed: remoteControl,
+              icon: const Icon(Icons.desktop_windows_outlined),
             ),
             IconButton(
               tooltip: 'Backend settings',
