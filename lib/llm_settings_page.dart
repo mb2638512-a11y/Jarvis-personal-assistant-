@@ -49,7 +49,7 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
         !{'http', 'https'}.contains(parsed.scheme.toLowerCase()) ||
         (parsed.scheme.toLowerCase() != 'https' &&
           !{'localhost', '127.0.0.1', '10.0.2.2'}.contains(parsed.host))) return null;
-    return parsed.replace(path: '\${parsed.path.replaceAll(RegExp(r'/+$'), '')}$path', query: null, fragment: null);
+    return parsed.replace(path: '${parsed.path.replaceAll(RegExp(r'/+$'), '')}$path', query: null, fragment: null);
   }
 
   Future<void> _load() async {
@@ -112,7 +112,7 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
     final provider = _providers[index];
     final uri = _endpoint(provider['baseUrl'] as String, '/models');
     if (uri == null) { setState(() => _status = 'Provider URL is invalid.'); return; }
-    setState(() { _busy = true; _status = 'Syncing models from \${provider['name']}…'; });
+    setState(() { _busy = true; _status = 'Syncing models from ${provider['name']}…'; });
     try {
       final key = await _storage.read(key: 'jarvis.llm.key.$_activeId') ?? '';
       final headers = <String, String>{'Accept': 'application/json'};
@@ -130,7 +130,7 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
       }
       final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20));
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('HTTP \${response.statusCode}: \${response.body.length > 180 ? response.body.substring(0, 180) : response.body}');
+        throw Exception('HTTP ${response.statusCode}: ${response.body.length > 180 ? response.body.substring(0, 180) : response.body}');
       }
       final body = jsonDecode(response.body);
       if (body is! Map || body['data'] is! List) {
@@ -139,10 +139,10 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
       final found = (body['data'] as List).whereType<Map>().map((e) => e['id'])
         .whereType<String>().where((s) => s.trim().isNotEmpty).toSet().toList()..sort();
       if (!mounted) return;
-      setState(() { _models = found; provider['models'] = found; _status = 'Synced \${found.length} model(s).'; });
+      setState(() { _models = found; provider['models'] = found; _status = 'Synced ${found.length} model(s).'; });
       await _save();
     } catch (error) {
-      if (mounted) setState(() => _status = 'Model sync failed: \${error.toString().replaceFirst('Exception: ', '')}');
+      if (mounted) setState(() => _status = 'Model sync failed: ${error.toString().replaceFirst('Exception: ', '')}');
     } finally { if (mounted) setState(() => _busy = false); }
   }
 
@@ -156,7 +156,7 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
       _task = p['task'] as String? ?? 'general';
       _routingMode = p['routingMode'] as String? ?? 'automatic';
       _models = (p['models'] as List? ?? []).whereType<String>().toList();
-      _status = 'Selected \${p['name']}. Sync to refresh its model catalogue.';
+      _status = 'Selected ${p['name']}. Sync to refresh its model catalogue.';
     });
   }
 
@@ -210,7 +210,7 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
           if (_providers.isNotEmpty) ...[
             DropdownButtonFormField<String>(value: active == null ? null : _activeId,
               decoration: const InputDecoration(labelText: 'Configured providers'),
-              items: _providers.map((p) => DropdownMenuItem<String>(value: p['id'] as String, child: Text('\${p['name']} · \${p['kind']}'))).toList(),
+              items: _providers.map((p) => DropdownMenuItem<String>(value: p['id'] as String, child: Text('${p['name']} · ${p['kind']}'))).toList(),
               onChanged: _selectProvider),
             const SizedBox(height: 10),
             Row(children: [
@@ -234,7 +234,7 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
               suffixIcon: _models.isEmpty ? null : PopupMenuButton<String>(icon: const Icon(Icons.list_alt),
                 onSelected: (v) => setState(() => _model.text = v),
                 itemBuilder: (_) => _models.take(100).map((m) => PopupMenuItem(value: m, child: Text(m))).toList()))),
-            if (_models.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text('\${_models.length} synced models; selector shows first 100.')),
+            if (_models.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text('${_models.length} synced models; selector shows first 100.')),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(value: _routingMode, decoration: const InputDecoration(labelText: 'Routing mode'),
               items: const [
