@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart';
 
 /// Shared-backend dashboard. Device usage must be sent by an explicitly
 /// permissioned collector; this screen never invents screen-time or reel counts.
@@ -77,6 +78,47 @@ class _WellbeingPageState extends State<WellbeingPage> {
     } finally { if (mounted) setState(() => busy = false); }
   }
 
+  static const deviceChannel = MethodChannel('com.jarvis.assistant/device_insights');
+
+  Future<void> collectAndroidUsage() async {
+    if (Theme.of(context).platform != TargetPlatform.android) {
+      setState(() => status = 'Native Usage Access collection is available on Android only.');
+      return;
+    }
+    if (token.text.trim().isEmpty || device.text.trim().isEmpty) {
+      setState(() => status = 'Enter gateway token and device ID first.');
+      return;
+    }
+    setState(() { busy = true; status = 'Checking Android Usage Access permission…'; });
+    try {
+      final allowed = await deviceChannel.invokeMethod<bool>('hasUsageAccess') ?? false;
+      if (!allowed) {
+        await deviceChannel.invokeMethod<bool>('openUsageAccessSettings');
+        if (mounted) setState(() => status = 'Enable Usage Access for Jarvis in Android Settings, return here, then tap Collect again.');
+        return;
+      }
+      final rows = await deviceChannel.invokeMethod<List<dynamic>>('getWeeklyAppUsage') ?? [];
+      var submitted = 0;
+      for (final raw in rows) {
+        final item = Map<String, dynamic>.from(raw as Map);
+        final seconds = (item['foreground_seconds'] as num?)?.toInt() ?? 0;
+        if (seconds <= 0) continue;
+        await request('/api/wellbeing/usage', body: {
+          'device_id': device.text.trim(), 'platform': 'android',
+          'app_id': item['app_id'], 'app_label': item['app_label'],
+          'foreground_seconds': seconds,
+        });
+        submitted++;
+      }
+      await refreshData();
+      if (mounted) setState(() => status = 'Submitted $submitted Android app usage summaries for the last 7 days. No individual reel counts are inferred.');
+    } on PlatformException catch (error) {
+      if (mounted) setState(() => status = error.message ?? 'Android usage collection failed.');
+    } catch (error) {
+      if (mounted) setState(() => status = error.toString().replaceFirst('Exception: ', ''));
+    } finally { if (mounted) setState(() => busy = false); }
+  }
+
   Future<void> saveCheckin() async {
     final rawSleep = sleep.text.trim();
     final hours = rawSleep.isEmpty ? null : double.tryParse(rawSleep);
@@ -127,6 +169,8 @@ class _WellbeingPageState extends State<WellbeingPage> {
         field(token, 'Private JARVIS_REMOTE_GATEWAY_TOKEN', secret: true),
         const SizedBox(height: 10),
         FilledButton.icon(onPressed: busy ? null : refreshData, icon: const Icon(Icons.sync), label: Text(busy ? 'Loading…' : 'Load shared data')),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(onPressed: busy ? null : collectAndroidUsage, icon: const Icon(Icons.phone_android), label: const Text('Collect Android app usage (7 days)')),
         const SizedBox(height: 10),
         Text(status, style: const TextStyle(color: Color(0xff9bacc2))),
         const SizedBox(height: 18),
