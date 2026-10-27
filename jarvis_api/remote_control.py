@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, Header, HTTPException
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from jarvis_api.config import settings
 
