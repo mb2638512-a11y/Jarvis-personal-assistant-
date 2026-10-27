@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'wellbeing_page.dart';
 
 void main() => runApp(const JarvisApp());
 
@@ -473,6 +474,13 @@ class _ChatPageState extends State<ChatPage> {
               tooltip: 'Remote PC control',
               onPressed: remoteControl,
               icon: const Icon(Icons.desktop_windows_outlined),
+            ),
+            IconButton(
+              tooltip: 'Usage, health and security dashboard',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => WellbeingPage(backendUrl: baseUrl),
+              )),
+              icon: const Icon(Icons.health_and_safety_outlined),
             ),
             IconButton(
               tooltip: 'Backend settings',
