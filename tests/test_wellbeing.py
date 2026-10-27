@@ -70,3 +70,40 @@ def test_checkin_and_security_event_are_stored(monkeypatch, tmp_path):
     )
     assert events.status_code == 200
     assert events.json()["events"][0]["category"] == "update"
+
+
+def test_device_metrics_and_security_snapshots(monkeypatch, tmp_path):
+    monkeypatch.setattr(wellbeing, "_DB", tmp_path / "wellbeing.sqlite3")
+    monkeypatch.setattr(wellbeing.settings, "remote_gateway_token", "test-secret")
+    client = TestClient(app)
+    headers = {"X-Jarvis-Gateway-Token": "test-secret"}
+
+    metrics = client.post("/api/wellbeing/device-metrics", headers=headers, json={
+        "device_id": "pc", "platform": "windows", "cpu_percent": 17.5,
+        "memory_percent": 61, "memory_used_bytes": 600, "memory_total_bytes": 1000,
+        "disk_percent": 80, "disk_free_bytes": 200, "top_processes": [],
+    })
+    assert metrics.status_code == 200
+    latest = client.get("/api/wellbeing/device-metrics", params={"device_id": "pc", "limit": 1}, headers=headers)
+    assert latest.status_code == 200
+    assert latest.json()["latest"]["cpu_percent"] == 17.5
+
+    security = client.post("/api/wellbeing/device-security", headers=headers, json={
+        "device_id": "pc", "platform": "windows", "firewall_enabled": True,
+        "antivirus_enabled": True, "realtime_protection": True, "risk_level": "low",
+        "findings": [],
+    })
+    assert security.status_code == 200
+    posture = client.get("/api/wellbeing/device-security", params={"device_id": "pc"}, headers=headers)
+    assert posture.status_code == 200
+    assert posture.json()["latest"]["firewall_enabled"] is True
+
+
+def test_device_snapshots_require_gateway_token(monkeypatch, tmp_path):
+    monkeypatch.setattr(wellbeing, "_DB", tmp_path / "wellbeing.sqlite3")
+    monkeypatch.setattr(wellbeing.settings, "remote_gateway_token", "test-secret")
+    client = TestClient(app)
+    response = client.post("/api/wellbeing/device-metrics", json={
+        "device_id": "pc", "platform": "windows", "cpu_percent": 10,
+    })
+    assert response.status_code == 401
