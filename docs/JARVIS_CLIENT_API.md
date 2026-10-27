@@ -9,3 +9,12 @@ Android and Windows clients should call the same Jarvis backend; they must not c
 - Protected Postiz actions: `GET /api/postiz/channels`, `GET /api/postiz/posts?startDate=<ISO>&endDate=<ISO>`, `POST /api/postiz/posts`, `DELETE /api/postiz/posts/{id}`, `POST /api/postiz/upload-from-url`, `GET /api/postiz/find-slot/{integration_id}`, `GET /api/postiz/analytics/{integration_id}`, and `GET /api/postiz/analytics/post/{post_id}`.
 
 Postiz action requests currently require the server-side gateway token in `X-Jarvis-Postiz-Token`. Do not embed that token in a shipped app. Before enabling remote mobile/desktop publishing, implement Jarvis user authentication, per-user permissions, and server-side session-to-workspace mapping, or put the routes behind an authenticated private gateway. Schedule first and review the queue; use `type: "now"` only when immediate publishing is explicitly requested.
+
+
+## Personal insights (private opt-in data)
+
+- `POST /api/wellbeing/usage` and `GET /api/wellbeing/usage?device_id=<id>&days=7`
+- `POST /api/wellbeing/checkins` and `GET /api/wellbeing/checkins?device_id=<id>`
+- `POST /api/wellbeing/security-events` and `GET /api/wellbeing/security-events?device_id=<id>`
+
+These endpoints require `X-Jarvis-Gateway-Token` and a configured `JARVIS_REMOTE_GATEWAY_TOKEN`. Android and Windows must use the same backend URL. See [Personal Insights](PERSONAL_INSIGHTS.md) for data model, privacy and limitations. The Windows opt-in collector exists; native Android Usage Access collection still needs implementation. Do not invent reel counts from app time.
