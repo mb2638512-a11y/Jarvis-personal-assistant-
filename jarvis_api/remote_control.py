@@ -197,14 +197,17 @@ async def poll_tasks(agent_id: str, x_jarvis_remote_token: str | None = Header(d
     agent_id = _valid_device_id(agent_id)
     now = time.time()
     with _db() as db:
-        agent = db.execute("SELECT platform FROM agents WHERE id=?", (agent_id,)).fetchone()
+        agent = db.execute("SELECT platform,capabilities FROM agents WHERE id=?", (agent_id,)).fetchone()
         if not agent:
             raise HTTPException(status_code=404, detail="Agent is not registered.")
         db.execute("UPDATE tasks SET status='expired' WHERE status='queued' AND expires_at<?", (now,))
         rows = db.execute(
-            "SELECT id,kind,payload,expires_at FROM tasks WHERE status='queued' AND target_platform=? AND (target_agent IS NULL OR target_agent=?) AND expires_at>=? ORDER BY created_at LIMIT 10",
+            "SELECT id,kind,payload,expires_at FROM tasks WHERE status='queued' AND target_platform=? AND (target_agent IS NULL OR target_agent=?) AND expires_at>=? ORDER BY created_at LIMIT 50",
             (agent["platform"], agent_id, now),
         ).fetchall()
+        # Never dispatch a task to an agent that did not advertise that capability.
+        capabilities = set(json.loads(agent["capabilities"]))
+        rows = [row for row in rows if row["kind"] in capabilities][:10]
         ids = [row["id"] for row in rows]
         if ids:
             db.executemany("UPDATE tasks SET status='running',target_agent=? WHERE id=?", [(agent_id, task_id) for task_id in ids])
