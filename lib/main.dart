@@ -169,6 +169,52 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  Future<void> _watchRemoteTask(
+    String taskId,
+    String token,
+    ScaffoldMessengerState messenger,
+  ) async {
+    final uri = _endpoint('/api/remote/tasks/$taskId');
+    if (uri == null) return;
+    for (var attempt = 0; attempt < 15; attempt++) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      try {
+        final response = await http.get(
+          uri,
+          headers: {'X-Jarvis-Remote-Token': token},
+        ).timeout(const Duration(seconds: 8));
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          continue;
+        }
+        final data = jsonDecode(response.body);
+        if (data is! Map) continue;
+        final taskStatus = data['status']?.toString() ?? 'unknown';
+        if (taskStatus == 'succeeded') {
+          final result = data['result'];
+          final summary = result is Map
+              ? (result['hostname'] ?? result['launched'] ?? result['opened'] ?? result['saved_to'] ?? 'Action completed')
+              : 'Action completed';
+          messenger.showSnackBar(
+            SnackBar(content: Text('Jarvis verified: $summary')),
+          );
+          return;
+        }
+        if (taskStatus == 'failed' || taskStatus == 'expired' || taskStatus == 'cancelled') {
+          final detail = data['error']?.toString();
+          messenger.showSnackBar(
+            SnackBar(content: Text('Jarvis task $taskStatus${detail == null ? '' : ': $detail'}')),
+          );
+          return;
+        }
+      } catch (_) {
+        // A temporary network interruption should not be mistaken for task success.
+      }
+    }
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Task is still pending. Check that the paired device agent is running.')),
+    );
+  }
+
   Future<void> remoteControl() async {
     final messenger = ScaffoldMessenger.of(context);
     final tokenController = TextEditingController();
@@ -292,9 +338,13 @@ class _ChatPageState extends State<ChatPage> {
                   }
                   if (!dialogContext.mounted || !mounted) return;
                   Navigator.pop(dialogContext);
+                  final taskId = data is Map ? data['task_id']?.toString() : null;
                   messenger.showSnackBar(
-                    SnackBar(content: Text('Task queued: ${data['task_id'] ?? 'unknown'} · waiting for $targetPlatform agent')),
+                    SnackBar(content: Text('Task queued: ${taskId ?? 'unknown'} · waiting for $targetPlatform agent')),
                   );
+                  if (taskId != null && taskId.isNotEmpty) {
+                    _watchRemoteTask(taskId, token, messenger);
+                  }
                 } catch (error) {
                   setDialogState(() => feedback = error.toString().replaceFirst('Exception: ', ''));
                 }
