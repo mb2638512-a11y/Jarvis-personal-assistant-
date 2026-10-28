@@ -600,181 +600,286 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          title: const Row(
-            children: [
-              Icon(Icons.blur_circular, color: Color(0xff68dffb)),
-              SizedBox(width: 10),
-              Text('JARVIS', style: TextStyle(fontWeight: FontWeight.w700)),
-            ],
+  Widget _launchTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    bool compact = false,
+  }) => InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.all(compact ? 13 : 17),
+          decoration: BoxDecoration(
+            color: const Color(0xff101a2a),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xff24354b)),
           ),
-          actions: [
-            IconButton(
-              tooltip: 'Check backend',
-              onPressed: checking ? null : checkHealth,
-              icon: checking
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.sync),
-            ),
-            IconButton(
-              tooltip: 'Connect social accounts (OAuth)',
-              onPressed: openSocialHub,
-              icon: const Icon(Icons.hub_outlined),
-            ),
-            IconButton(
-              tooltip: 'Actions on this phone',
-              onPressed: phoneActions,
-              icon: const Icon(Icons.phone_android_outlined),
-            ),
-            IconButton(
-              tooltip: 'Remote PC control',
-              onPressed: remoteControl,
-              icon: const Icon(Icons.desktop_windows_outlined),
-            ),
-            IconButton(
-              tooltip: 'Usage, health and security dashboard',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => WellbeingPage(backendUrl: baseUrl),
-              )),
-              icon: const Icon(Icons.health_and_safety_outlined),
-            ),
-            IconButton(
-              tooltip: 'Hardware load and device security',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => DeviceHealthPage(backendUrl: baseUrl),
-              )),
-              icon: const Icon(Icons.memory_outlined),
-            ),
-            IconButton(
-              tooltip: 'LLM providers and model router',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const LlmSettingsPage(),
-              )),
-              icon: const Icon(Icons.account_tree_outlined),
-            ),
-            IconButton(
-              tooltip: 'Backend settings',
-              onPressed: settings,
-              icon: const Icon(Icons.settings_outlined),
-            ),
-            const SizedBox(width: 8),
-          ],
-        ),
-        body: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 900),
-              child: Column(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xff101827),
-                      border: Border.all(color: const Color(0xff23334a)),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          backendOnline ? Icons.check_circle : Icons.info_outline,
-                          color: backendOnline
-                              ? const Color(0xff70e0a3)
-                              : const Color(0xfff3bb5f),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text(status)),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: ListView.builder(
-                      controller: scroll,
-                      padding: const EdgeInsets.all(16),
-                      itemCount: messages.length,
-                      itemBuilder: (context, index) {
-                        final message = messages[index];
-                        return Align(
-                          alignment: message.user
-                              ? Alignment.centerRight
-                              : Alignment.centerLeft,
-                          child: Container(
-                            constraints: BoxConstraints(
-                              maxWidth: MediaQuery.sizeOf(context).width * .78,
-                            ),
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: message.user
-                                  ? const Color(0xff16415a)
-                                  : const Color(0xff101827),
-                              border: Border.all(
-                                color: const Color(0xff23334a),
-                              ),
-                              borderRadius: BorderRadius.only(
-                                topLeft: const Radius.circular(18),
-                                topRight: const Radius.circular(18),
-                                bottomLeft: Radius.circular(message.user ? 18 : 5),
-                                bottomRight: Radius.circular(message.user ? 5 : 18),
-                              ),
-                            ),
-                            child: SelectableText(message.text),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  if (busy) const LinearProgressIndicator(minHeight: 2),
-                  SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: input,
-                              minLines: 1,
-                              maxLines: 5,
-                              maxLength: 12000,
-                              enabled: !busy,
-                              textInputAction: TextInputAction.newline,
-                              decoration: const InputDecoration(
-                                hintText: 'Message Jarvis…',
-                                counterText: '',
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 14,
-                                ),
-                              ),
-                              onSubmitted: (_) => send(),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton.filled(
-                            tooltip: 'Send message',
-                            onPressed: busy ? null : send,
-                            icon: const Icon(Icons.arrow_upward),
-                            style: IconButton.styleFrom(
-                              minimumSize: const Size(52, 52),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+          child: Row(
+            children: [
+              Container(
+                width: compact ? 38 : 44,
+                height: compact ? 38 : 44,
+                decoration: BoxDecoration(
+                  color: const Color(0xff15374a),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(icon, color: const Color(0xff75e3ff), size: compact ? 20 : 23),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                    const SizedBox(height: 3),
+                    Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Color(0xff94a8c0), fontSize: 12)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Color(0xff71869e), size: 19),
+            ],
           ),
         ),
       );
+
+  Widget _sectionLabel(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 11, top: 8),
+        child: Text(text.toUpperCase(), style: const TextStyle(
+          color: Color(0xff80dff7), letterSpacing: 1.7, fontSize: 10, fontWeight: FontWeight.w800)),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final desktop = width >= 980;
+    final wide = width >= 650;
+    final quickActions = <Widget>[
+      _launchTile(icon: Icons.desktop_windows_rounded, title: 'Control your PC', subtitle: 'Run approved remote actions', onTap: remoteControl, compact: !wide),
+      _launchTile(icon: Icons.phone_android_rounded, title: 'This phone', subtitle: 'Open settings and websites', onTap: phoneActions, compact: !wide),
+      _launchTile(icon: Icons.hub_rounded, title: 'Connect apps', subtitle: 'Secure social account links', onTap: openSocialHub, compact: !wide),
+      _launchTile(icon: Icons.account_tree_rounded, title: 'AI models', subtitle: 'Providers, routing and keys', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LlmSettingsPage())), compact: !wide),
+    ];
+
+    final tools = <Widget>[
+      _launchTile(icon: Icons.health_and_safety_outlined, title: 'Wellbeing', subtitle: 'Usage and personal check-ins', compact: true,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WellbeingPage(backendUrl: baseUrl)))),
+      _launchTile(icon: Icons.memory_rounded, title: 'Device health', subtitle: 'Hardware readings and security', compact: true,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DeviceHealthPage(backendUrl: baseUrl)))),
+      _launchTile(icon: Icons.settings_rounded, title: 'Settings', subtitle: 'Backend and connection', compact: true, onTap: settings),
+    ];
+
+    final chatPanel = Column(
+      children: [
+        if (messages.length <= 1 && !busy)
+          Padding(
+            padding: EdgeInsets.fromLTRB(wide ? 24 : 16, wide ? 24 : 14, wide ? 24 : 16, 8),
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(wide ? 24 : 18),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                  colors: [Color(0xff142c42), Color(0xff101827), Color(0xff101827)]),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: const Color(0xff29445c)),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Container(width: 52, height: 52,
+                  decoration: BoxDecoration(color: const Color(0xff153d50), borderRadius: BorderRadius.circular(17)),
+                  child: const Icon(Icons.blur_circular_rounded, color: Color(0xff7be6ff), size: 30)),
+                const SizedBox(height: 18),
+                Text('Your AI. Your devices. Your workflow.',
+                  style: TextStyle(fontSize: wide ? 27 : 22, height: 1.15, fontWeight: FontWeight.w800, letterSpacing: -.5)),
+                const SizedBox(height: 9),
+                const Text('Ask Jarvis to think with you, help with work, or use the connected tools you have configured.',
+                  style: TextStyle(color: Color(0xffa7b7ca), height: 1.45)),
+                const SizedBox(height: 14),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  _suggestion('Help me plan my day'),
+                  _suggestion('Explain this code'),
+                  _suggestion('Help me debug a problem'),
+                ]),
+              ]),
+            ),
+          ),
+        Expanded(
+          child: ListView.builder(
+            controller: scroll,
+            padding: EdgeInsets.fromLTRB(wide ? 24 : 16, 12, wide ? 24 : 16, 18),
+            itemCount: messages.length,
+            itemBuilder: (context, index) {
+              final message = messages[index];
+              return Align(
+                alignment: message.user ? Alignment.centerRight : Alignment.centerLeft,
+                child: Container(
+                  constraints: BoxConstraints(maxWidth: desktop ? 680 : width * .86),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                  decoration: BoxDecoration(
+                    color: message.user ? const Color(0xff17435b) : const Color(0xff111b2a),
+                    border: Border.all(color: message.user ? const Color(0xff28627d) : const Color(0xff24354a)),
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(19), topRight: const Radius.circular(19),
+                      bottomLeft: Radius.circular(message.user ? 19 : 5),
+                      bottomRight: Radius.circular(message.user ? 5 : 19)),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    if (!message.user)
+                      const Padding(padding: EdgeInsets.only(bottom: 6), child: Text('JARVIS',
+                        style: TextStyle(color: Color(0xff78def8), fontSize: 10, letterSpacing: 1.5, fontWeight: FontWeight.w800))),
+                    SelectableText(message.text, style: const TextStyle(height: 1.45)),
+                  ]),
+                ),
+              );
+            },
+          ),
+        ),
+        if (busy) const LinearProgressIndicator(minHeight: 2),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(wide ? 24 : 12, 10, wide ? 24 : 12, 14),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(8, 4, 6, 4),
+              decoration: BoxDecoration(color: const Color(0xff111b2a),
+                border: Border.all(color: const Color(0xff2a3d53)), borderRadius: BorderRadius.circular(22)),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                IconButton(tooltip: 'Tools', onPressed: () => showModalBottomSheet<void>(
+                  context: context, backgroundColor: const Color(0xff101827),
+                  builder: (_) => SafeArea(child: Padding(padding: const EdgeInsets.all(16),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: quickActions)))),
+                  icon: const Icon(Icons.add_circle_outline, color: Color(0xff8ea6bd))),
+                Expanded(child: TextField(
+                  controller: input, minLines: 1, maxLines: 5, maxLength: 12000,
+                  enabled: !busy, textInputAction: TextInputAction.newline,
+                  decoration: const InputDecoration(hintText: 'Message Jarvis…', counterText: '',
+                    filled: false, border: InputBorder.none, enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none, contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 12)),
+                  onSubmitted: (_) => send(),
+                )),
+                const SizedBox(width: 4),
+                IconButton.filled(onPressed: busy ? null : send, tooltip: 'Send message',
+                  icon: const Icon(Icons.arrow_upward_rounded),
+                  style: IconButton.styleFrom(minimumSize: const Size(46, 46), backgroundColor: const Color(0xff63d9f5), foregroundColor: const Color(0xff07121d))),
+              ]),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    final sidebar = Container(
+      width: 260,
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+      decoration: const BoxDecoration(color: Color(0xff0b1220), border: Border(right: BorderSide(color: Color(0xff1e3044)))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Row(children: [
+          Icon(Icons.blur_circular_rounded, color: Color(0xff75e3ff), size: 34),
+          SizedBox(width: 10),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('JARVIS', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 2)),
+            Text('PERSONAL AI', style: TextStyle(fontSize: 9, letterSpacing: 2, color: Color(0xff8ba2bb))),
+          ]),
+        ]),
+        const SizedBox(height: 28),
+        _sectionLabel('Workspace'),
+        _launchTile(icon: Icons.chat_bubble_outline_rounded, title: 'AI Assistant', subtitle: 'Chat and get things done', compact: true, onTap: () {}),
+        const SizedBox(height: 9),
+        ...quickActions.map((e) => Padding(padding: const EdgeInsets.only(bottom: 9), child: e)),
+        const SizedBox(height: 8),
+        _sectionLabel('Monitor'),
+        ...tools.map((e) => Padding(padding: const EdgeInsets.only(bottom: 9), child: e)),
+        const Spacer(),
+        Container(padding: const EdgeInsets.all(13), decoration: BoxDecoration(
+          color: const Color(0xff101827), borderRadius: BorderRadius.circular(15), border: Border.all(color: const Color(0xff24354a))),
+          child: Row(children: [
+            Container(width: 9, height: 9, decoration: BoxDecoration(
+              color: backendOnline ? const Color(0xff65e6a5) : const Color(0xffeab85d), shape: BoxShape.circle)),
+            const SizedBox(width: 9),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(backendOnline ? 'Backend connected' : 'Backend not verified', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 3),
+              Text(status, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: Color(0xff91a5bc))),
+            ])),
+            IconButton(tooltip: 'Check connection', onPressed: checking ? null : checkHealth, icon: const Icon(Icons.refresh, size: 18)),
+          ]),
+        ),
+      ]),
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 66,
+        title: Row(children: [
+          if (!desktop) const Icon(Icons.blur_circular_rounded, color: Color(0xff75e3ff)),
+          if (!desktop) const SizedBox(width: 9),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(desktop ? 'AI WORKSPACE' : 'JARVIS', style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.4, fontSize: 16)),
+            Text(backendOnline ? 'Connected · ready to assist' : 'Personal AI assistant',
+              style: const TextStyle(fontSize: 11, color: Color(0xff8ea4bb), fontWeight: FontWeight.w400)),
+          ]),
+        ]),
+        actions: [
+          if (!desktop) IconButton(tooltip: 'Remote PC control', onPressed: remoteControl, icon: const Icon(Icons.desktop_windows_outlined)),
+          if (!desktop) IconButton(tooltip: 'Phone actions', onPressed: phoneActions, icon: const Icon(Icons.phone_android_outlined)),
+          IconButton(tooltip: 'Check connection', onPressed: checking ? null : checkHealth,
+            icon: checking ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.sync_rounded)),
+          if (!desktop) PopupMenuButton<String>(
+            tooltip: 'More tools',
+            onSelected: (value) {
+              if (value == 'social') openSocialHub();
+              if (value == 'wellbeing') Navigator.of(context).push(MaterialPageRoute(builder: (_) => WellbeingPage(backendUrl: baseUrl)));
+              if (value == 'health') Navigator.of(context).push(MaterialPageRoute(builder: (_) => DeviceHealthPage(backendUrl: baseUrl)));
+              if (value == 'models') Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LlmSettingsPage()));
+              if (value == 'settings') settings();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'social', child: Text('Connect apps')),
+              PopupMenuItem(value: 'wellbeing', child: Text('Wellbeing dashboard')),
+              PopupMenuItem(value: 'health', child: Text('Device health')),
+              PopupMenuItem(value: 'models', child: Text('AI model settings')),
+              PopupMenuItem(value: 'settings', child: Text('Backend settings')),
+            ],
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: SafeArea(child: Row(children: [
+        if (desktop) sidebar,
+        Expanded(child: Column(children: [
+          Container(
+            margin: EdgeInsets.fromLTRB(desktop ? 24 : 14, 12, desktop ? 24 : 14, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+            decoration: BoxDecoration(
+              color: backendOnline ? const Color(0xff0d2a25) : const Color(0xff211d17),
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(color: backendOnline ? const Color(0xff205344) : const Color(0xff4a3922))),
+            child: Row(children: [
+              Icon(backendOnline ? Icons.check_circle_outline : Icons.info_outline,
+                size: 19, color: backendOnline ? const Color(0xff70e0a3) : const Color(0xfff0c36b)),
+              const SizedBox(width: 10),
+              Expanded(child: Text(status, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, color: Color(0xffc2ceda)))),
+              if (!desktop) TextButton(onPressed: settings, child: const Text('Setup')),
+            ]),
+          ),
+          if (!desktop)
+            SizedBox(height: 92, child: ListView(scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+              children: quickActions.map((e) => SizedBox(width: 245, child: Padding(padding: const EdgeInsets.only(right: 9), child: e))).toList())),
+          Expanded(child: chatPanel),
+        ])),
+      ])),
+    );
+  }
+
+  Widget _suggestion(String label) => ActionChip(
+    label: Text(label, style: const TextStyle(fontSize: 11)),
+    backgroundColor: const Color(0xff15283a),
+    side: const BorderSide(color: Color(0xff2a4a60)),
+    onPressed: () { input.text = label; send(); },
+  );
+}
 }
