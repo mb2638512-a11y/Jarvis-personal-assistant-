@@ -211,6 +211,39 @@ async def poll_tasks(agent_id: str, x_jarvis_remote_token: str | None = Header(d
     return {"tasks": [{"id": r["id"], "kind": r["kind"], "payload": json.loads(r["payload"]), "expires_at": r["expires_at"]} for r in rows]}
 
 
+@router.get("/tasks/{task_id}")
+async def get_task(task_id: str, x_jarvis_remote_token: str | None = Header(default=None)) -> dict[str, Any]:
+    """Return the status/result of one task so the phone can confirm real execution."""
+    _auth(x_jarvis_remote_token)
+    try:
+        uuid.UUID(task_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="Invalid task id.") from exc
+    with _db() as db:
+        db.execute(
+            "UPDATE tasks SET status='expired' WHERE id=? AND status='queued' AND expires_at<?",
+            (task_id, time.time()),
+        )
+        row = db.execute(
+            "SELECT id,target_platform,target_agent,kind,status,created_at,expires_at,result,error "
+            "FROM tasks WHERE id=?",
+            (task_id,),
+        ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Task not found.")
+    return {
+        "task_id": row["id"],
+        "target_platform": row["target_platform"],
+        "target_agent": row["target_agent"],
+        "kind": row["kind"],
+        "status": row["status"],
+        "created_at": row["created_at"],
+        "expires_at": row["expires_at"],
+        "result": json.loads(row["result"]) if row["result"] else None,
+        "error": row["error"],
+    }
+
+
 class TaskResult(BaseModel):
     status: Literal["succeeded", "failed", "cancelled"]
     result: dict[str, Any] = Field(default_factory=dict)
