@@ -29,17 +29,69 @@ class JarvisApp extends StatelessWidget {
             backgroundColor: Color(0xff080d18),
             surfaceTintColor: Colors.transparent,
           ),
+          scaffoldBackgroundColor: const Color(0xff080d18),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xff080d18),
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            centerTitle: false,
+          ),
+          cardTheme: CardThemeData(
+            color: const Color(0xff101827),
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            margin: const EdgeInsets.symmetric(vertical: 5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: const BorderSide(color: Color(0xff23354a)),
+            ),
+          ),
+          dividerTheme: const DividerThemeData(
+            color: Color(0xff24354a),
+            thickness: 1,
+            space: 28,
+          ),
+          filledButtonTheme: FilledButtonThemeData(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(44, 48),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
+          outlinedButtonTheme: OutlinedButtonThemeData(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(44, 46),
+              side: const BorderSide(color: Color(0xff2a455d)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
           inputDecorationTheme: InputDecorationTheme(
             filled: true,
             fillColor: const Color(0xff101827),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(15),
               borderSide: const BorderSide(color: Color(0xff23334a)),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(15),
               borderSide: const BorderSide(color: Color(0xff23334a)),
             ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: const BorderSide(color: Color(0xff68dffb), width: 1.5),
+            ),
+            labelStyle: const TextStyle(color: Color(0xffa6b8ca)),
+            hintStyle: const TextStyle(color: Color(0xff71869e)),
+          ),
+          snackBarTheme: SnackBarThemeData(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xff172438),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          listTileTheme: const ListTileThemeData(
+            iconColor: Color(0xff75dff8),
+            contentPadding: EdgeInsets.symmetric(horizontal: 14),
           ),
         ),
         home: const ChatPage(),
