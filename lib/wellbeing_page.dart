@@ -180,12 +180,31 @@ class _WellbeingPageState extends State<WellbeingPage> {
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Usage, Health & Security')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        const Text('PRIVATE PERSONAL DASHBOARD', style: TextStyle(color: Color(0xff70e4ff), letterSpacing: 2, fontSize: 11)),
-        const SizedBox(height: 8),
-        const Text('Understand your digital habits', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        const Text('Only your opt-in reports appear here. Android usage access can measure app foreground time, but cannot reliably count individual reels watched inside YouTube, Instagram, or TikTok.'),
+      body: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 920), child: ListView(padding: const EdgeInsets.all(16), children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+              colors: [Color(0xff15354a), Color(0xff101827), Color(0xff101827)]),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xff29475d)),
+          ),
+          child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Icon(Icons.insights_rounded, color: Color(0xff75e3ff), size: 27),
+              SizedBox(width: 10),
+              Text('PERSONAL INSIGHTS', style: TextStyle(color: Color(0xff80e2fb),
+                letterSpacing: 1.8, fontSize: 11, fontWeight: FontWeight.w800)),
+            ]),
+            SizedBox(height: 12),
+            Text('Build healthier digital habits.',
+              style: TextStyle(fontSize: 25, height: 1.15, fontWeight: FontWeight.w800, letterSpacing: -.4)),
+            SizedBox(height: 8),
+            Text('A private view of reported app usage, personal check-ins and security events—without inventing missing data.',
+              style: TextStyle(color: Color(0xffa6b8ca), height: 1.45)),
+          ]),
+        ),
+        const SizedBox(height: 16),
         const SizedBox(height: 16),
         field(device, 'Device ID (same ID used by your collector)'),
         const SizedBox(height: 10),
@@ -243,7 +262,7 @@ class _WellbeingPageState extends State<WellbeingPage> {
           if (securityEvents.isEmpty) const Text('No security events reported.')
           else ...securityEvents.take(15).map((e) => ListTile(contentPadding: EdgeInsets.zero, title: Text('${e['severity']} · ${e['category']}'), subtitle: Text('${e['summary']}\n${e['created_at']}'))),
         ]))),
-      ]),
+      ])),
     );
   }
 }
