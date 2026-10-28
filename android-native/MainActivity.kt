@@ -14,9 +14,39 @@ import java.util.Calendar
 
 class MainActivity : FlutterActivity() {
     private val channelName = "com.jarvis.assistant/device_insights"
+    private val phoneActionsChannelName = "com.jarvis.assistant/phone_actions"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, phoneActionsChannelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "openSettings" -> {
+                        startActivity(Intent(Settings.ACTION_SETTINGS))
+                        result.success(true)
+                    }
+                    "openSecureUrl" -> {
+                        val raw = call.argument<String>("url") ?: ""
+                        val uri = android.net.Uri.parse(raw)
+                        if (uri.scheme != "https" || uri.host.isNullOrBlank() || uri.userInfo != null) {
+                            result.error("INVALID_URL", "Only valid HTTPS URLs can be opened.", null)
+                        } else {
+                            startActivity(Intent(Intent.ACTION_VIEW, uri))
+                            result.success(true)
+                        }
+                    }
+                    "getDeviceStatus" -> {
+                        val metrics = readDeviceMetrics()
+                        result.success(mapOf(
+                            "device" to Build.MODEL,
+                            "android_version" to Build.VERSION.RELEASE,
+                            "sdk" to Build.VERSION.SDK_INT,
+                            "metrics" to metrics
+                        ))
+                    }
+                    else -> result.notImplemented()
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
