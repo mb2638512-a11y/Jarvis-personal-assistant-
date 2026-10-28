@@ -238,8 +238,33 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
       appBar: AppBar(title: const Text('LLM Providers & Model Router')),
       body: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 820),
         child: ListView(padding: const EdgeInsets.all(16), children: [
-          const Text('Add OpenAI-compatible providers, routers, or local model servers. Model sync reads the standard /v1/models endpoint.'),
-          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                colors: [Color(0xff15354a), Color(0xff101827), Color(0xff101827)]),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: const Color(0xff29475d)),
+            ),
+            child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(Icons.account_tree_rounded, color: Color(0xff75e3ff), size: 28),
+                SizedBox(width: 10),
+                Expanded(child: Text('AI MODEL CONTROL', style: TextStyle(
+                  color: Color(0xff80e2fb), fontSize: 11, letterSpacing: 2, fontWeight: FontWeight.w800))),
+              ]),
+              SizedBox(height: 13),
+              Text('Choose the intelligence behind Jarvis',
+                style: TextStyle(fontSize: 23, height: 1.15, fontWeight: FontWeight.w800, letterSpacing: -.4)),
+              SizedBox(height: 8),
+              Text('Connect hosted APIs or local model servers, test access, sync models and select how tasks are routed.',
+                style: TextStyle(color: Color(0xffa6b8ca), height: 1.45)),
+            ]),
+          ),
+          const SizedBox(height: 18),
+          const Text('ADD A PROVIDER', style: TextStyle(
+            color: Color(0xff80e2fb), fontSize: 10, letterSpacing: 1.7, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
           DropdownButtonFormField<String>(value: _kind, decoration: const InputDecoration(labelText: 'Provider / router'),
             items: _presets.keys.map((k) => DropdownMenuItem(value: k, child: Text(k))).toList(), onChanged: _preset),
           const SizedBox(height: 10),
@@ -255,8 +280,25 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
             decoration: const InputDecoration(labelText: 'Optional custom headers (JSON)', hintText: '{"HTTP-Referer":"https://your-app.example"}')),
           const SizedBox(height: 10),
           FilledButton.icon(onPressed: _addProvider, icon: const Icon(Icons.add), label: const Text('Save provider')),
-          const Divider(height: 28),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(color: const Color(0xff0d1726),
+              borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xff24354a))),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(_status.toLowerCase().contains('fail') || _status.toLowerCase().contains('invalid')
+                ? Icons.error_outline_rounded : Icons.info_outline_rounded,
+                color: _status.toLowerCase().contains('fail') || _status.toLowerCase().contains('invalid')
+                  ? const Color(0xffffa38b) : const Color(0xff75dff8)),
+              const SizedBox(width: 11),
+              Expanded(child: Text(_status, style: const TextStyle(height: 1.4))),
+            ]),
+          ),
+          const SizedBox(height: 18),
           if (_providers.isNotEmpty) ...[
+            const Text('ACTIVE CONFIGURATION', style: TextStyle(
+              color: Color(0xff80e2fb), fontSize: 10, letterSpacing: 1.7, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
             DropdownButtonFormField<String>(value: active == null ? null : _activeId,
               decoration: const InputDecoration(labelText: 'Configured providers'),
               items: _providers.map((p) => DropdownMenuItem<String>(value: p['id'] as String, child: Text('${p['name']} · ${p['kind']}'))).toList(),
@@ -297,9 +339,21 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
             FilledButton(onPressed: _savePreference, child: const Text('Save model preference')),
           ],
           const SizedBox(height: 14),
-          Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xff101827), borderRadius: BorderRadius.circular(14)), child: Text(_status)),
-          const SizedBox(height: 10),
-          const Text('Compatibility note: providers must expose an OpenAI-compatible /models endpoint for automatic sync. Provider-specific APIs need adapters. Jarvis uses the saved model, task category, and provider fallback for new chat requests. Provider APIs must be OpenAI-compatible.'),
+          Container(
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(color: const Color(0xff101827),
+              borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xff23354a))),
+            child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(Icons.shield_outlined, color: Color(0xff75dff8)),
+                SizedBox(width: 9),
+                Text('Connection & privacy notes', style: TextStyle(fontWeight: FontWeight.w700)),
+              ]),
+              SizedBox(height: 9),
+              Text('API keys are stored in device secure storage. Remote endpoints must use HTTPS. Automatic model sync requires an OpenAI-compatible /models endpoint; unsupported provider APIs need an adapter.',
+                style: TextStyle(color: Color(0xffa6b8ca), height: 1.45)),
+            ]),
+          ),
         ]))),
     );
   }
