@@ -18,6 +18,7 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
   final _apiKey = TextEditingController();
   final _model = TextEditingController();
   final _headers = TextEditingController();
+  final _modelSearch = TextEditingController();
   final List<Map<String, dynamic>> _providers = [];
   List<String> _models = [];
   String _kind = 'OpenRouter';
@@ -38,7 +39,7 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
   void initState() { super.initState(); _load(); }
   @override
   void dispose() {
-    _name.dispose(); _baseUrl.dispose(); _apiKey.dispose(); _model.dispose(); _headers.dispose();
+    _name.dispose(); _baseUrl.dispose(); _apiKey.dispose(); _model.dispose(); _headers.dispose(); _modelSearch.dispose();
     super.dispose();
   }
 
@@ -182,11 +183,12 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
         throw Exception('HTTP ${response.statusCode}: ${response.body.length > 180 ? response.body.substring(0, 180) : response.body}');
       }
       final body = jsonDecode(response.body);
-      if (body is! Map || body['data'] is! List) {
-        throw const FormatException('Endpoint did not return an OpenAI-compatible /models catalogue.');
+      final rawModels = body is Map ? (body['data'] ?? body['models']) : null;
+      if (rawModels is! List) {
+        throw const FormatException('Endpoint did not return a model list in data[] or models[].');
       }
-      final found = (body['data'] as List).whereType<Map>().map((e) => e['id'])
-        .whereType<String>().where((s) => s.trim().isNotEmpty).toSet().toList()..sort();
+      final found = rawModels.whereType<Map>().map((e) => e['id'] ?? e['name'] ?? e['model'])
+        .whereType<String>().map((s) => s.trim()).where((s) => s.isNotEmpty).toSet().toList()..sort();
       if (!mounted) return;
       setState(() { _models = found; provider['models'] = found; _status = 'Synced ${found.length} model(s).'; });
       await _save();
@@ -207,6 +209,78 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
       _models = (p['models'] as List? ?? []).whereType<String>().toList();
       _status = 'Selected ${p['name']}. Sync to refresh its model catalogue.';
     });
+  }
+
+
+  Future<void> _chooseModel() async {
+    if (_models.isEmpty) {
+      setState(() => _status = 'Sync the provider model catalogue first.');
+      return;
+    }
+    _modelSearch.clear();
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final query = _modelSearch.text.trim().toLowerCase();
+          final filtered = _models.where((id) => id.toLowerCase().contains(query)).toList();
+          return AlertDialog(
+            title: Text('Model catalogue · ${_models.length}'),
+            content: SizedBox(
+              width: 520,
+              height: 520,
+              child: Column(children: [
+                TextField(
+                  controller: _modelSearch,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search),
+                    labelText: 'Search all synced models',
+                    hintText: 'Type a model ID or provider name',
+                  ),
+                  onChanged: (_) => setDialogState(() {}),
+                ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('${filtered.length} matching models',
+                    style: const TextStyle(color: Color(0xff9bacc2), fontSize: 12)),
+                ),
+                const SizedBox(height: 6),
+                Expanded(
+                  child: filtered.isEmpty
+                    ? const Center(child: Text('No matching model IDs.'))
+                    : ListView.builder(
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final id = filtered[index];
+                          return ListTile(
+                            dense: true,
+                            title: Text(id, maxLines: 2, overflow: TextOverflow.ellipsis),
+                            trailing: id == _model.text.trim()
+                              ? const Icon(Icons.check_circle, color: Color(0xff75e3ff))
+                              : null,
+                            onTap: () => Navigator.of(dialogContext).pop(id),
+                          );
+                        },
+                      ),
+                ),
+              ]),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel')),
+            ],
+          );
+        },
+      ),
+    );
+    if (selected != null && mounted) {
+      setState(() {
+        _model.text = selected;
+        _status = 'Selected model: $selected. Save model preference to use it.';
+      });
+    }
   }
 
   Future<void> _savePreference() async {
@@ -323,12 +397,24 @@ class _LlmSettingsPageState extends State<LlmSettingsPage> {
                 DropdownMenuItem(value: 'low_cost', child: Text('Low cost')),
               ], onChanged: (v) => setState(() => _task = v ?? 'general')),
             const SizedBox(height: 10),
-            TextField(controller: _model, decoration: InputDecoration(labelText: 'Selected model ID',
-              hintText: 'Choose from synced models or type an ID',
-              suffixIcon: _models.isEmpty ? null : PopupMenuButton<String>(icon: const Icon(Icons.list_alt),
-                onSelected: (v) => setState(() => _model.text = v),
-                itemBuilder: (_) => _models.take(100).map((m) => PopupMenuItem(value: m, child: Text(m))).toList()))),
-            if (_models.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text('${_models.length} synced models; selector shows first 100.')),
+            TextField(controller: _model, decoration: const InputDecoration(
+              labelText: 'Selected model ID',
+              hintText: 'Browse synced models or enter an exact ID',
+            )),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(child: OutlinedButton.icon(
+                onPressed: _models.isEmpty ? null : _chooseModel,
+                icon: const Icon(Icons.search_rounded),
+                label: const Text('Browse all models'),
+              )),
+              const SizedBox(width: 10),
+              if (_models.isNotEmpty) Expanded(child: Text(
+                '${_models.length} models synced',
+                textAlign: TextAlign.end,
+                style: const TextStyle(color: Color(0xff9bacc2), fontSize: 12),
+              )),
+            ]),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(value: _routingMode, decoration: const InputDecoration(labelText: 'Routing mode'),
               items: const [
