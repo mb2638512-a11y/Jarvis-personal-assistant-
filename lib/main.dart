@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'wellbeing_page.dart';
@@ -167,6 +168,100 @@ class _ChatPageState extends State<ChatPage> {
         SnackBar(content: Text('Social accounts: $message')),
       );
     }
+  }
+
+  Future<void> phoneActions() async {
+    if (Theme.of(context).platform != TargetPlatform.android) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Phone-local actions are available in the Android app.')),
+      );
+      return;
+    }
+    final urlController = TextEditingController();
+    String feedback = 'These actions run on this phone, not on the remote PC.';
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('This phone · local actions'),
+          content: SizedBox(
+            width: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('Jarvis can open Android Settings, open a secure website, and read basic device status.'),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: urlController,
+                    keyboardType: TextInputType.url,
+                    autocorrect: false,
+                    decoration: const InputDecoration(
+                      labelText: 'HTTPS website',
+                      hintText: 'https://example.com',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      try {
+                        await const MethodChannel('com.jarvis.assistant/phone_actions')
+                            .invokeMethod<bool>('openSettings');
+                        setDialogState(() => feedback = 'Android Settings opened on this phone.');
+                      } catch (error) {
+                        setDialogState(() => feedback = 'Could not open Settings: $error');
+                      }
+                    },
+                    icon: const Icon(Icons.settings_outlined),
+                    label: const Text('Open Android Settings'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final uri = Uri.tryParse(urlController.text.trim());
+                      if (uri == null || uri.scheme != 'https' || uri.host.isEmpty || uri.userInfo.isNotEmpty) {
+                        setDialogState(() => feedback = 'Enter a valid HTTPS URL without embedded credentials.');
+                        return;
+                      }
+                      try {
+                        await const MethodChannel('com.jarvis.assistant/phone_actions')
+                            .invokeMethod<bool>('openSecureUrl', {'url': uri.toString()});
+                        setDialogState(() => feedback = 'Website opened on this phone.');
+                      } catch (error) {
+                        setDialogState(() => feedback = 'Could not open website: $error');
+                      }
+                    },
+                    icon: const Icon(Icons.open_in_browser),
+                    label: const Text('Open HTTPS website'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      try {
+                        final status = await const MethodChannel('com.jarvis.assistant/phone_actions')
+                            .invokeMapMethod<String, dynamic>('getDeviceStatus');
+                        setDialogState(() => feedback = status == null
+                            ? 'No device status returned.'
+                            : 'Device: ${status['device']} · Android ${status['android_version']} · API ${status['sdk']}');
+                      } catch (error) {
+                        setDialogState(() => feedback = 'Could not read device status: $error');
+                      }
+                    },
+                    icon: const Icon(Icons.phone_android),
+                    label: const Text('Read phone status'),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(feedback, style: const TextStyle(color: Color(0xff9bacc2))),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
+          ],
+        ),
+      ),
+    );
+    urlController.dispose();
   }
 
   Future<void> _watchRemoteTask(
@@ -531,6 +626,11 @@ class _ChatPageState extends State<ChatPage> {
               tooltip: 'Connect social accounts (OAuth)',
               onPressed: openSocialHub,
               icon: const Icon(Icons.hub_outlined),
+            ),
+            IconButton(
+              tooltip: 'Actions on this phone',
+              onPressed: phoneActions,
+              icon: const Icon(Icons.phone_android_outlined),
             ),
             IconButton(
               tooltip: 'Remote PC control',
