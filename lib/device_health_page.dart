@@ -127,10 +127,31 @@ class _DeviceHealthPageState extends State<DeviceHealthPage> {
     final s = security;
     return Scaffold(
       appBar: AppBar(title: const Text('Hardware & Security')),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        const Text('DEVICE INTELLIGENCE', style: TextStyle(color: Color(0xff70e4ff), letterSpacing: 2)),
-        const SizedBox(height: 8),
-        const Text('Monitor actual reported load', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+      body: Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 920), child: ListView(padding: const EdgeInsets.all(16), children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+              colors: [Color(0xff15354a), Color(0xff101827), Color(0xff101827)]),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xff29475d)),
+          ),
+          child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Icon(Icons.memory_rounded, color: Color(0xff75e3ff), size: 27),
+              SizedBox(width: 10),
+              Text('DEVICE INTELLIGENCE', style: TextStyle(color: Color(0xff80e2fb),
+                letterSpacing: 1.8, fontSize: 11, fontWeight: FontWeight.w800)),
+            ]),
+            SizedBox(height: 12),
+            Text('Your hardware. One clear view.',
+              style: TextStyle(fontSize: 25, height: 1.15, fontWeight: FontWeight.w800, letterSpacing: -.4)),
+            SizedBox(height: 8),
+            Text('Review real readings from this device or securely load reports from a paired collector.',
+              style: TextStyle(color: Color(0xffa6b8ca), height: 1.45)),
+          ]),
+        ),
+        const SizedBox(height: 16),
         const SizedBox(height: 12),
         TextField(controller: device, decoration: const InputDecoration(labelText: 'Device ID')),
         const SizedBox(height: 8),
@@ -169,7 +190,7 @@ class _DeviceHealthPageState extends State<DeviceHealthPage> {
         ]))),
         const SizedBox(height: 12),
         const Text('This is monitoring, not guaranteed hacker protection. Keep OS updates, built-in antivirus/firewall, strong passwords, MFA, encryption and backups enabled. Use HTTPS and never share the gateway token.', style: TextStyle(color: Color(0xff9bacc2), fontSize: 12)),
-      ]),
+      ])),
     );
   }
 }
