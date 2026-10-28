@@ -28,11 +28,6 @@ class JarvisApp extends StatelessWidget {
           appBarTheme: const AppBarTheme(
             backgroundColor: Color(0xff080d18),
             surfaceTintColor: Colors.transparent,
-          ),
-          scaffoldBackgroundColor: const Color(0xff080d18),
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xff080d18),
-            surfaceTintColor: Colors.transparent,
             elevation: 0,
             centerTitle: false,
           ),
@@ -933,5 +928,4 @@ class _ChatPageState extends State<ChatPage> {
     side: const BorderSide(color: Color(0xff2a4a60)),
     onPressed: () { input.text = label; send(); },
   );
-}
 }
