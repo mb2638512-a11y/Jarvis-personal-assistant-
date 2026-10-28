@@ -262,7 +262,7 @@ class _WellbeingPageState extends State<WellbeingPage> {
           if (securityEvents.isEmpty) const Text('No security events reported.')
           else ...securityEvents.take(15).map((e) => ListTile(contentPadding: EdgeInsets.zero, title: Text('${e['severity']} · ${e['category']}'), subtitle: Text('${e['summary']}\n${e['created_at']}'))),
         ]))),
-      ])),
+      ]))),
     );
   }
 }
