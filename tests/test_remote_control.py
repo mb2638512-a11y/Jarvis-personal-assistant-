@@ -100,3 +100,23 @@ def test_task_status_requires_auth_and_valid_id(monkeypatch, tmp_path):
     assert client.get("/api/remote/tasks/00000000-0000-0000-0000-000000000000", headers=HEADERS).status_code == 404
     assert client.get("/api/remote/tasks/00000000-0000-0000-0000-000000000000").status_code == 401
 
+def test_agent_cannot_claim_task_outside_advertised_capabilities(monkeypatch, tmp_path):
+    setup(monkeypatch, tmp_path)
+    registered = client.post("/api/remote/agents/register", headers=HEADERS, json={
+        "id": "mustafa-pc", "platform": "windows", "capabilities": ["get_status"]
+    })
+    assert registered.status_code == 200
+    queued = client.post("/api/remote/tasks", headers=HEADERS, json={
+        "target_platform": "windows", "target_agent": "mustafa-pc",
+        "kind": "open_url", "payload": {"url": "https://example.com"}
+    })
+    assert queued.status_code == 200
+    task_id = queued.json()["task_id"]
+
+    polled = client.get("/api/remote/agents/mustafa-pc/tasks", headers=HEADERS)
+    assert polled.status_code == 200
+    assert polled.json()["tasks"] == []
+    status = client.get(f"/api/remote/tasks/{task_id}", headers=HEADERS)
+    assert status.status_code == 200
+    assert status.json()["status"] == "queued"
+
