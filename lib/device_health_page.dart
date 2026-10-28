@@ -190,7 +190,7 @@ class _DeviceHealthPageState extends State<DeviceHealthPage> {
         ]))),
         const SizedBox(height: 12),
         const Text('This is monitoring, not guaranteed hacker protection. Keep OS updates, built-in antivirus/firewall, strong passwords, MFA, encryption and backups enabled. Use HTTPS and never share the gateway token.', style: TextStyle(color: Color(0xff9bacc2), fontSize: 12)),
-      ])),
+      ]))),
     );
   }
 }
