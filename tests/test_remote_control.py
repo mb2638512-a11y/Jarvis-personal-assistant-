@@ -71,3 +71,32 @@ def test_remote_control_requires_https_urls(monkeypatch, tmp_path):
         "target_platform": "windows", "kind": "open_url", "payload": {"url": "http://example.com"}
     })
     assert response.status_code == 422
+
+def test_task_status_reports_real_agent_result(monkeypatch, tmp_path):
+    setup(monkeypatch, tmp_path)
+    registered = client.post("/api/remote/agents/register", headers=HEADERS, json={
+        "id": "mustafa-pc", "platform": "windows", "capabilities": ["get_status"]
+    })
+    assert registered.status_code == 200
+    queued = client.post("/api/remote/tasks", headers=HEADERS, json={
+        "target_platform": "windows", "target_agent": "mustafa-pc", "kind": "get_status"
+    })
+    task_id = queued.json()["task_id"]
+    assert client.get(f"/api/remote/tasks/{task_id}", headers=HEADERS).json()["status"] == "queued"
+    client.get("/api/remote/agents/mustafa-pc/tasks", headers=HEADERS)
+    done = client.post(f"/api/remote/tasks/{task_id}/result", headers=HEADERS, json={
+        "status": "succeeded", "result": {"hostname": "mustafa-pc"}
+    })
+    assert done.status_code == 200
+    status = client.get(f"/api/remote/tasks/{task_id}", headers=HEADERS)
+    assert status.status_code == 200
+    assert status.json()["status"] == "succeeded"
+    assert status.json()["result"]["hostname"] == "mustafa-pc"
+
+
+def test_task_status_requires_auth_and_valid_id(monkeypatch, tmp_path):
+    setup(monkeypatch, tmp_path)
+    assert client.get("/api/remote/tasks/not-a-uuid", headers=HEADERS).status_code == 422
+    assert client.get("/api/remote/tasks/00000000-0000-0000-0000-000000000000", headers=HEADERS).status_code == 404
+    assert client.get("/api/remote/tasks/00000000-0000-0000-0000-000000000000").status_code == 401
+
