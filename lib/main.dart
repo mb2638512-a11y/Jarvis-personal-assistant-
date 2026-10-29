@@ -677,12 +677,24 @@ class _ChatPageState extends State<ChatPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    ),
                     const SizedBox(height: 3),
-                    Text(subtitle, maxLines: compact ? 1 : 2, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: const Color(0xff94a8c0), fontSize: compact ? 11 : 12)),
+                    Text(
+                      subtitle,
+                      maxLines: compact ? 1 : 2,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: const Color(0xff94a8c0), fontSize: compact ? 11 : 12),
+                    ),
                   ],
                 ),
               ),
