@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show Size;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:jarvis_personal_assistant/main.dart';
 
