@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - android
+      - pc-host
       - android-app
       - windows-app
       - feature/**
@@ -12,7 +13,9 @@ on:
     paths:
       - "jarvis_api/**"
       - "windows/**"
+      - "scripts/**"
       - "tests/**"
+      - "docs/WINDOWS_PC_HOST_SETUP.md"
       - "pyproject.toml"
       - ".gitmodules"
       - "backend/vendor/**"
@@ -22,7 +25,9 @@ on:
     paths:
       - "jarvis_api/**"
       - "windows/**"
+      - "scripts/**"
       - "tests/**"
+      - "docs/WINDOWS_PC_HOST_SETUP.md"
       - "pyproject.toml"
       - ".gitmodules"
       - "backend/vendor/**"
