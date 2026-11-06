@@ -17,6 +17,7 @@ def setup(monkeypatch):
 def test_artemis_status_is_not_configured_without_private_host(monkeypatch):
     monkeypatch.setattr(settings, "artemis_base_url", "")
     monkeypatch.setattr(settings, "artemis_gateway_token", "")
+    monkeypatch.setattr(settings, "remote_gateway_token", TOKEN)
     response = client.get("/api/artemis/status", headers={"X-Jarvis-Remote-Token": TOKEN})
     assert response.status_code == 200
     assert response.json()["live_connected"] is False
