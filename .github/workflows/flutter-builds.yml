@@ -36,7 +36,20 @@ jobs:
       - name: Generate Android platform scaffold
         run: flutter create --platforms=android --project-name jarvis_personal_assistant .
       - name: Set Android minimum SDK for mobile_scanner
-        run: sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' android/app/build.gradle.kts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          candidates = [Path("android/app/build.gradle.kts"), Path("android/app/build.gradle")]
+          for path in candidates:
+              if path.exists():
+                  source = path.read_text()
+                  source = source.replace("minSdk = flutter.minSdkVersion", "minSdk = 23")
+                  source = source.replace("minSdkVersion flutter.minSdkVersion", "minSdkVersion 23")
+                  path.write_text(source)
+                  break
+          else:
+              raise SystemExit("Android app Gradle file was not generated.")
+          PY
       - name: Resolve Flutter dependencies
         run: flutter pub get
       - name: Analyze Dart source
