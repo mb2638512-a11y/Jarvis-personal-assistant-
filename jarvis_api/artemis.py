@@ -15,7 +15,7 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 
 import httpx
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
 from jarvis_api.config import settings
