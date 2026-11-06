@@ -17,6 +17,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from jarvis_api.config import settings
+from jarvis_api.remote_control import _auth as _remote_auth
 
 router = APIRouter(prefix="/api/artemis", tags=["ARTEMIS Android automation"])
 DEVICE_RE = re.compile(r"^[A-Za-z0-9._:-]{2,128}$")
@@ -92,7 +93,8 @@ class ArtemisTaskRequest(BaseModel):
 
 
 @router.get("/status")
-async def artemis_status() -> dict[str, Any]:
+async def artemis_status(x_jarvis_device_token: str | None = Header(default=None)) -> dict[str, Any]:
+    _remote_auth(None, x_jarvis_device_token)
     if not _configured():
         return {
             "configured": False, "live_connected": False, "ready": False,
@@ -120,9 +122,9 @@ async def artemis_status() -> dict[str, Any]:
 @router.post("/tasks")
 async def submit_artemis_task(
     body: ArtemisTaskRequest,
-    x_jarvis_artemis_token: str | None = Header(default=None),
+    x_jarvis_device_token: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    _auth(x_jarvis_artemis_token)
+    _remote_auth(None, x_jarvis_device_token)
     if not body.user_confirmed:
         raise HTTPException(status_code=403, detail="Android automation requires explicit user confirmation.")
     task_id = str(uuid.uuid4())
@@ -145,9 +147,9 @@ async def submit_artemis_task(
 @router.get("/tasks/{task_id}")
 async def get_artemis_task(
     task_id: str,
-    x_jarvis_artemis_token: str | None = Header(default=None),
+    x_jarvis_device_token: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    _auth(x_jarvis_artemis_token)
+    _remote_auth(None, x_jarvis_device_token)
     try:
         parsed = str(uuid.UUID(task_id))
     except ValueError as exc:
