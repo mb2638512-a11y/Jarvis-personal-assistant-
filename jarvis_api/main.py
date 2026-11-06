@@ -13,6 +13,7 @@ from jarvis_api.mcp_registry import router as mcp_router
 from jarvis_api.postiz import router as postiz_router
 from jarvis_api.device_pairing import router as device_pairing_router
 from jarvis_api.model_catalog import router as model_catalog_router
+from jarvis_api.provider_vault import router as provider_vault_router, active_provider
 from jarvis_api.remote_control import router as remote_control_router
 from jarvis_api.social_oauth import router as social_oauth_router
 from jarvis_api.wellbeing import router as wellbeing_router
@@ -26,6 +27,7 @@ app.include_router(social_oauth_router)
 app.include_router(remote_control_router)
 app.include_router(device_pairing_router)
 app.include_router(model_catalog_router)
+app.include_router(provider_vault_router)
 app.include_router(wellbeing_router)
 
 
@@ -67,13 +69,12 @@ async def status() -> dict[str, object]:
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(body: ChatRequest) -> ChatResponse:
-    if not settings.api_key.strip() or not settings.model.strip():
-        raise HTTPException(
-            status_code=503,
-            detail="AI provider is not configured. Set JARVIS_API_KEY and JARVIS_MODEL.",
-        )
-
-    base_url = settings.base_url.rstrip("/")
+    provider = active_provider()
+    api_key = provider["api_key"] if provider else settings.api_key.strip()
+    model = provider["model"] if provider else settings.model.strip()
+    base_url = (provider["base_url"] if provider else settings.base_url).rstrip("/")
+    if not api_key or not model:
+        raise HTTPException(status_code=503, detail="AI provider is not configured. Add a provider in PC-hosted Jarvis model settings.")
     if not base_url.startswith("https://") and not (
         base_url.startswith("http://")
         and base_url.split("/")[2].split(":")[0] in {"localhost", "127.0.0.1"}
@@ -84,7 +85,7 @@ async def chat(body: ChatRequest) -> ChatResponse:
         )
 
     payload = {
-        "model": settings.model,
+        "model": model,
         "messages": [
             {
                 "role": "system",
@@ -98,7 +99,7 @@ async def chat(body: ChatRequest) -> ChatResponse:
             response = await client.post(
                 f"{base_url}/chat/completions",
                 headers={
-                    "Authorization": f"Bearer {settings.api_key}",
+                    "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
                 json=payload,
