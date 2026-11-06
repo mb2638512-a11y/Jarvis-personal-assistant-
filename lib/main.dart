@@ -8,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'wellbeing_page.dart';
+import 'command_center_page.dart';
 import 'device_health_page.dart';
 import 'model_hub_page.dart';
 import 'device_pairing_page.dart';
@@ -97,7 +98,7 @@ class JarvisApp extends StatelessWidget {
             contentPadding: EdgeInsets.symmetric(horizontal: 14),
           ),
         ),
-        home: const ChatPage(),
+        home: const CommandCenterPage(),
       );
 }
 
