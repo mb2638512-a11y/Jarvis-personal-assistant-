@@ -68,7 +68,7 @@ class _IntegrationSetupPageState extends State<IntegrationSetupPage> {
     final base = isPostiz ? _postizUrl.text.trim() : _artemisUrl.text.trim();
     final secret = isPostiz ? _postizKey.text.trim() : _artemisToken.text.trim();
     final googleKey = _artemisGoogleKey.text.trim();
-    if (base.isEmpty || secret.isEmpty) {
+    if (base.isEmpty || (isPostiz && secret.isEmpty)) {
       setState(() => _status = 'Enter both the service URL and its secret.');
       return;
     }
@@ -143,7 +143,7 @@ class _IntegrationSetupPageState extends State<IntegrationSetupPage> {
             const SizedBox(height: 10),
             TextField(controller: _artemisUrl, decoration: const InputDecoration(labelText: 'Private ARTEMIS host URL', helperText: 'Use localhost when the ARTEMIS daemon runs on this PC.')),
             const SizedBox(height: 10),
-            TextField(controller: _artemisToken, obscureText: true, autocorrect: false, decoration: const InputDecoration(labelText: 'ARTEMIS gateway token')),
+            TextField(controller: _artemisToken, obscureText: true, autocorrect: false, decoration: const InputDecoration(labelText: 'ARTEMIS gateway token (optional)', helperText: 'Leave blank to generate a private token automatically.')),
             const SizedBox(height: 10),
             TextField(controller: _artemisGoogleKey, obscureText: true, autocorrect: false, decoration: const InputDecoration(labelText: 'Google Gemini API key for ARTEMIS', helperText: 'Optional but required for the upstream default Gemini agents. Stored encrypted on the PC.')),
             const SizedBox(height: 10),
