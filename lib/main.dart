@@ -141,8 +141,18 @@ class _ChatPageState extends State<ChatPage> {
     final storage = const FlutterSecureStorage();
     final pairedUrl = await storage.read(key: 'jarvis.shared.backend');
     if (pairedUrl != null && pairedUrl.trim().isNotEmpty && mounted) {
+      var restored = pairedUrl.trim();
+      while (restored.endsWith('/')) {
+        restored = restored.substring(0, restored.length - 1);
+      }
       setState(() {
-        baseUrl = pairedUrl.trim().replaceFirst(RegExp(r'/+
+        baseUrl = restored;
+        status = 'Restored paired Jarvis PC backend.';
+      });
+    }
+    await checkHealth();
+  }
+
   Uri? _endpoint(String path) {
     final parsed = Uri.tryParse(baseUrl.trim());
     if (parsed == null ||
