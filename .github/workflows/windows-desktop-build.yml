@@ -1,4 +1,4 @@
-name: Jarvis Windows Release
+name: Jarvis Windows EXE Installer
 
 on:
   push:
@@ -9,11 +9,11 @@ permissions:
   contents: write
 
 concurrency:
-  group: jarvis-windows-release
+  group: jarvis-windows-exe-release
   cancel-in-progress: true
 
 jobs:
-  build-and-release:
+  build-installer:
     runs-on: windows-latest
     steps:
       - name: Checkout Jarvis
@@ -25,7 +25,7 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Prepare Windows desktop project
+      - name: Build and test Windows app
         shell: pwsh
         run: |
           flutter --version
@@ -33,22 +33,13 @@ jobs:
             flutter create --platforms=windows,android --org com.jarvis.assistant .
           }
           flutter pub get
-
-      - name: Analyze and test Flutter app
-        run: |
           flutter analyze --no-fatal-infos
           flutter test
-
-      - name: Build Windows desktop app
-        run: flutter build windows --release
-
-      - name: Verify desktop executable
-        shell: pwsh
-        run: |
+          flutter build windows --release
           $exe = "build/windows/x64/runner/Release/jarvis_personal_assistant.exe"
-          if (!(Test-Path $exe)) { throw "Windows executable not found: $exe" }
+          if (!(Test-Path $exe)) { throw "Windows app executable missing." }
 
-      - name: Assemble complete Windows bundle
+      - name: Assemble installer payload
         shell: pwsh
         run: |
           $root = "dist/Jarvis-Windows"
@@ -60,25 +51,40 @@ jobs:
           }
           if (Test-Path "web") { Copy-Item "web" "$root/host/web" -Recurse -Force }
           Copy-Item "windows-installer/Install-Jarvis.ps1" "$root/Install-Jarvis.ps1" -Force
-          Copy-Item "windows-installer/Install-Jarvis.bat" "$root/Install-Jarvis.bat" -Force
           Copy-Item "windows-installer/Start-Jarvis.ps1" "$root/Start-Jarvis.ps1" -Force
           if (!(Test-Path "$root/host/scripts/install-windows-host.ps1")) {
-            throw "Windows host installer scripts are missing from the bundle."
+            throw "Host installer script missing from payload."
           }
           Compress-Archive -Path "$root/*" -DestinationPath "dist/Jarvis-Windows-x64.zip" -Force
 
-      - name: Publish latest Windows release
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --yes --no-progress
+          if (!(Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe")) {
+            throw "Inno Setup compiler was not installed."
+          }
+
+      - name: Build single-file Jarvis Setup EXE
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "windows-installer/Jarvis-Setup.iss"
+          if (!(Test-Path "dist/Jarvis-Setup.exe")) { throw "Jarvis-Setup.exe was not produced." }
+          Get-Item "dist/Jarvis-Setup.exe" | Select-Object Name,Length
+
+      - name: Publish latest Windows installer
         uses: softprops/action-gh-release@v2
         with:
           tag_name: windows-latest
           name: Jarvis Windows — Latest
           body: |
-            Windows x64 desktop + self-hosted PC backend bundle.
+            Single-file Windows x64 installer.
 
-            Download Jarvis-Windows-x64.zip, extract it, and run Install-Jarvis.ps1.
-            The installer installs Python 3.11 (through winget if needed), prepares the local backend and Windows agent, and creates a desktop shortcut.
+            Download Jarvis-Setup.exe and run it. It installs the Windows app and local PC backend, installs Python 3.11 through winget when needed, creates a desktop shortcut, and starts Jarvis.
 
-            An AI provider API key and model are still required. Hosted models, Postiz, ARTEMIS, Tailscale and OAuth credentials are not bundled.
-          files: dist/Jarvis-Windows-x64.zip
+            First-run configuration still requires your own AI provider API key and model. External Postiz, ARTEMIS, Tailscale and OAuth services require their own credentials and are not silently provisioned.
+          files: |
+            dist/Jarvis-Setup.exe
+            dist/Jarvis-Windows-x64.zip
           overwrite_files: true
           make_latest: true
