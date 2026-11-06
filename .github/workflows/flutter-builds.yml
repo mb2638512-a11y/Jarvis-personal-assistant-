@@ -35,6 +35,8 @@ jobs:
           channel: stable
       - name: Generate Android platform scaffold
         run: flutter create --platforms=android --project-name jarvis_personal_assistant .
+      - name: Set Android minimum SDK for mobile_scanner
+        run: sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' android/app/build.gradle.kts
       - name: Resolve Flutter dependencies
         run: flutter pub get
       - name: Analyze Dart source
