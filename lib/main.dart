@@ -537,10 +537,16 @@ class _ChatPageState extends State<ChatPage> {
       if (uri == null) {
         throw Exception('The shared PC backend URL is invalid. Pair this device with your Windows Jarvis PC or fix the backend URL.');
       }
+      final chatHeaders = <String, String>{'Content-Type': 'application/json'};
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final deviceToken = await const FlutterSecureStorage().read(key: 'jarvis.device.token');
+        if (deviceToken == null || deviceToken.isEmpty) throw Exception('Pair this phone with your Windows Jarvis PC first.');
+        chatHeaders['X-Jarvis-Device-Token'] = deviceToken;
+      }
       final response = await http
           .post(
             uri,
-            headers: const {'Content-Type': 'application/json'},
+            headers: chatHeaders,
             body: jsonEncode({'message': text}),
           )
           .timeout(const Duration(seconds: 60));
