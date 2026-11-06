@@ -26,7 +26,7 @@ class _DevicePairingPageState extends State<DevicePairingPage> {
 
   Future<void> _onDetect(BarcodeCapture capture) async {
     if (_busy || _done) return;
-    final raw = capture.barcodes.firstOrNull?.rawValue;
+    final raw = capture.barcodes.isEmpty ? null : capture.barcodes.first.rawValue;
     if (raw == null) return;
     final uri = Uri.tryParse(raw);
     if (uri == null || uri.scheme != 'jarvis' || uri.host != 'pair') {
