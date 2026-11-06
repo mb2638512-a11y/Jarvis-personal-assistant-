@@ -9,6 +9,7 @@ import 'wellbeing_page.dart';
 import 'device_health_page.dart';
 import 'llm_settings_page.dart';
 import 'llm_client.dart';
+import 'device_pairing_page.dart';
 import 'tools_page.dart';
 
 void main() => runApp(const JarvisApp());
@@ -722,6 +723,7 @@ class _ChatPageState extends State<ChatPage> {
     final wide = width >= 650;
     final quickActions = <Widget>[
       _launchTile(icon: Icons.desktop_windows_rounded, title: 'Control your PC', subtitle: 'Run approved remote actions', onTap: remoteControl, compact: !wide),
+      _launchTile(icon: Icons.qr_code_scanner_rounded, title: 'Pair with PC', subtitle: 'Scan the Windows Jarvis QR code', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DevicePairingPage())), compact: !wide),
       _launchTile(icon: Icons.phone_android_rounded, title: 'This phone', subtitle: 'Open settings and websites', onTap: phoneActions, compact: !wide),
       _launchTile(icon: Icons.hub_rounded, title: 'Connect apps', subtitle: 'Secure social account links', onTap: openSocialHub, compact: !wide),
       _launchTile(icon: Icons.account_tree_rounded, title: 'AI models', subtitle: 'Providers, routing and keys', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LlmSettingsPage())), compact: !wide),
