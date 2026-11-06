@@ -180,9 +180,10 @@ class _WindowsPairingPageState extends State<WindowsPairingPage> {
         constraints: const BoxConstraints(maxWidth: 560),
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
               const Icon(Icons.devices_rounded, size: 44, color: Color(0xff75e3ff)),
               const SizedBox(height: 14),
               const Text('One PC · One shared Jarvis backend', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
@@ -258,7 +259,8 @@ class _WindowsPairingPageState extends State<WindowsPairingPage> {
                 }),
               const SizedBox(height: 8),
               const Text('The QR contains a short-lived one-time challenge, never your AI API keys.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Color(0xff8295aa))),
-            ],
+              ],
+            ),
           ),
         ),
       ),
