@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from jarvis_api.config import settings
 
