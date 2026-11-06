@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     # OAuth is handled by the self-hosted Postiz workspace. Do not put social
     # platform tokens or Postiz server credentials in browser/mobile clients.
     remote_gateway_token: str = ""
+    public_base_url: str = ""  # Public HTTPS URL used by paired Android clients.
     remote_task_ttl_seconds: int = Field(default=300, gt=0, le=3600)
     postiz_app_url: str = ""
     postiz_api_key: str = ""
