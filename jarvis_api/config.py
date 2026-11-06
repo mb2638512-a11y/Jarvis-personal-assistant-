@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     postiz_base_url: str = "https://api.postiz.com/public/v1"
     postiz_gateway_token: str = ""
     postiz_timeout_seconds: float = Field(default=20, gt=0, le=120)
+    # ARTEMIS runs as a private Android device host; its daemon must not be exposed publicly.
+    artemis_base_url: str = ""
+    artemis_gateway_token: str = ""
+    artemis_timeout_seconds: float = Field(default=30, gt=0, le=180)
 
 
 settings = Settings()
