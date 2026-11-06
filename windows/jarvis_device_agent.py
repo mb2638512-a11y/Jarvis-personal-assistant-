@@ -102,6 +102,12 @@ def execute(kind: str, payload: dict[str, Any]) -> dict[str, Any]:
 def main() -> None:
     if sys.platform != "win32":
         raise SystemExit("The Atticus-backed Jarvis device agent runs on Windows only.")
+    parsed = urllib.parse.urlsplit(BASE_URL)
+    local_http = parsed.scheme == "http" and parsed.hostname in {"localhost", "127.0.0.1"}
+    if parsed.scheme != "https" and not local_http:
+        raise SystemExit("JARVIS_BASE_URL must use HTTPS except for localhost.")
+    if parsed.username or parsed.password or parsed.query or parsed.fragment:
+        raise SystemExit("JARVIS_BASE_URL must not contain credentials or query parameters.")
     if not TOKEN:
         raise SystemExit("Set JARVIS_REMOTE_GATEWAY_TOKEN before starting the agent.")
     capabilities = ["open_url", "open_app", "type_text", "press_key", "screenshot", "get_status"]
