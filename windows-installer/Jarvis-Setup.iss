@@ -1,4 +1,5 @@
 ; Jarvis single-file Windows bootstrap installer
+#define RepoRoot GetEnv("GITHUB_WORKSPACE")
 #define MyAppName "Jarvis"
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "Jarvis"
