@@ -92,6 +92,7 @@ class PostizConfig(BaseModel):
 class ArtemisConfig(BaseModel):
     base_url: str = Field(min_length=8, max_length=500)
     gateway_token: str = Field(min_length=16, max_length=4000)
+    google_api_key: str = Field(default="", max_length=4000)
 
     @field_validator("base_url")
     @classmethod
@@ -117,6 +118,7 @@ async def get_integration_configs(
             "configured": bool((artemis or {}).get("gateway_token") or settings.artemis_gateway_token.strip()),
             "base_url": (artemis or {}).get("base_url") or settings.artemis_base_url,
             "credential_exposed": False,
+            "llm_key_configured": bool((artemis or {}).get("google_api_key")),
         },
     }
 
@@ -139,5 +141,5 @@ async def save_artemis_config(
     x_jarvis_remote_token: str | None = Header(default=None),
 ) -> dict[str, object]:
     _admin(request, x_jarvis_remote_token)
-    _save("artemis", {"base_url": body.base_url, "gateway_token": body.gateway_token})
+    _save("artemis", {"base_url": body.base_url, "gateway_token": body.gateway_token, "google_api_key": body.google_api_key})
     return {"saved": True, "service": "artemis", "credential_exposed": False, "base_url": body.base_url}
