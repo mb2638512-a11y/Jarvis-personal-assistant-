@@ -928,7 +928,7 @@ class _ChatPageState extends State<ChatPage> {
               if (value == 'social') openSocialHub();
               if (value == 'wellbeing') Navigator.of(context).push(MaterialPageRoute(builder: (_) => WellbeingPage(backendUrl: baseUrl)));
               if (value == 'health') Navigator.of(context).push(MaterialPageRoute(builder: (_) => DeviceHealthPage(backendUrl: baseUrl)));
-              if (value == 'models') Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LlmSettingsPage()));
+              if (value == 'models') Navigator.of(context).push(MaterialPageRoute(builder: (_) => ModelHubPage(backendUrl: baseUrl, readOnly: defaultTargetPlatform == TargetPlatform.android)));
               if (value == 'tools') Navigator.of(context).push(MaterialPageRoute(builder: (_) => ToolsPage(backendUrl: baseUrl)));
               if (value == 'settings') settings();
             },
