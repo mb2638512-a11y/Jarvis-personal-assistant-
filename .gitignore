@@ -14,3 +14,5 @@ build/
 htmlcov/
 \n# Local Jarvis host state and device/task registry\ndata/*.sqlite3\ndata/*.sqlite3-*\n
 data/*.key
+data/*.log
+data/*.lock
