@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 from jarvis_api.artemis import router as artemis_router
 from jarvis_api.config import settings
 from jarvis_api.device_pairing import router as device_pairing_router
+from jarvis_api.integration_vault import router as integration_vault_router
 from jarvis_api.integrations import router as integrations_router
 from jarvis_api.mcp_registry import router as mcp_router
 from jarvis_api.model_catalog import router as model_catalog_router
@@ -22,6 +23,7 @@ app = FastAPI(title="Jarvis Personal Assistant API", version="0.2.0")
 app.include_router(postiz_router)
 app.include_router(artemis_router)
 app.include_router(integrations_router)
+app.include_router(integration_vault_router)
 app.include_router(mcp_router)
 app.include_router(social_oauth_router)
 app.include_router(remote_control_router)
