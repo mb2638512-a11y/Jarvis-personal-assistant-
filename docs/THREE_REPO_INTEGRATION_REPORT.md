@@ -45,6 +45,6 @@ CI now runs Python tests/compile, backend-focused lint, and Flutter builds for A
 - QR pairing now has a real PC approval queue. The Android device receives its credential only after approval; the credential is stored in Android secure storage and only its hash is persisted by Jarvis.
 - The Windows agent currently uses a narrow, typed set of vendored Atticus Windows primitives. The full Atticus conversational runtime is not invoked; upstream relies on Claude Code CLI, so integration with Jarvis's shared model hub needs separate work.
 - ARTEMIS is vendored and the Jarvis bridge/client UI exists, but the ARTEMIS daemon is not yet automatically installed or started by the Windows installer. It requires Python 3.12+, its own runtime dependencies and an authorized Android ADB device.
-- Postiz source and Public API adapter are present, but no live workspace API key/OAuth account has been connected or tested.
-- The PC-side provider vault encrypts API keys at rest and the Android catalogue is read-only. Windows and Android have not yet been physically paired and exercised together.
+- Postiz source, Public API adapter, Android/Windows publishing UI, and encrypted PC-side API credential setup are present. No live workspace key/OAuth account or publish round-trip has been tested.
+- The PC-side provider vault encrypts model provider keys, Postiz API keys and ARTEMIS credentials at rest; Android model/provider configuration remains read-only. Windows and Android have not yet been physically paired and exercised together.
 - Tailscale Serve setup is attempted by the Windows host launcher; the user must install/sign in to Tailscale on both devices and enable tailnet HTTPS before QR pairing can work off localhost.
