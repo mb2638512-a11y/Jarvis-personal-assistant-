@@ -2,7 +2,7 @@ name: Jarvis Windows and Android builds
 
 on:
   pull_request:
-    branches: [pc-host]
+    branches: [pc-host, feature/pc-first-dual-device-integration]
     paths:
       - "lib/**"
       - "pubspec.yaml"
