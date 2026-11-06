@@ -39,6 +39,7 @@ APP_NAMES = {
     "chrome": "Google Chrome",
     "edge": "Microsoft Edge",
     "firefox": "Mozilla Firefox",
+    "settings": "Settings",
 }
 KEYS = {
     "ENTER": 0x0D, "ESC": 0x1B, "TAB": 0x09,
