@@ -15,7 +15,7 @@ from jarvis_api.mcp_registry import router as mcp_router
 from jarvis_api.model_catalog import router as model_catalog_router
 from jarvis_api.postiz import router as postiz_router
 from jarvis_api.provider_vault import router as provider_vault_router, active_provider
-from jarvis_api.remote_control import router as remote_control_router, _auth as _remote_auth
+from jarvis_api.remote_control import _auth as _remote_auth, router as remote_control_router
 from jarvis_api.social_oauth import router as social_oauth_router
 from jarvis_api.wellbeing import router as wellbeing_router
 
