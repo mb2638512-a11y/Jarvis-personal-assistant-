@@ -13,6 +13,7 @@ import 'device_pairing_page.dart';
 import 'windows_pairing_page.dart';
 import 'artemis_control_page.dart';
 import 'postiz_control_page.dart';
+import 'integration_setup_page.dart';
 import 'tools_page.dart';
 
 void main() => runApp(const JarvisApp());
@@ -763,6 +764,7 @@ class _ChatPageState extends State<ChatPage> {
       _launchTile(icon: Icons.phone_android_rounded, title: 'This phone', subtitle: 'Open settings and websites', onTap: phoneActions, compact: !wide),
       _launchTile(icon: Icons.hub_rounded, title: 'Connect apps', subtitle: 'Secure social account links', onTap: openSocialHub, compact: !wide),
       _launchTile(icon: Icons.campaign_rounded, title: 'Postiz social', subtitle: 'Manage channels, drafts and publishing', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PostizControlPage(backendUrl: baseUrl))), compact: !wide),
+      if (defaultTargetPlatform == TargetPlatform.windows) _launchTile(icon: Icons.tune_rounded, title: 'Integration setup', subtitle: 'Secure Postiz and ARTEMIS credentials on PC', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IntegrationSetupPage(backendUrl: baseUrl))), compact: !wide),
 
       _launchTile(icon: Icons.account_tree_rounded, title: 'Shared AI models', subtitle: 'PC provider vault and model sync', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ModelHubPage(backendUrl: baseUrl, readOnly: defaultTargetPlatform == TargetPlatform.android))), compact: !wide),
     ];
