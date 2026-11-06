@@ -7,7 +7,6 @@ user authentication/authorization is implemented.
 from __future__ import annotations
 
 import re
-import secrets
 from typing import Any, Literal
 
 import httpx
@@ -15,6 +14,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import AnyHttpUrl, BaseModel, Field
 
 from jarvis_api.config import settings
+from jarvis_api.remote_control import _auth as _remote_auth
 
 router = APIRouter(prefix="/api/postiz", tags=["Postiz social publishing"])
 
@@ -39,20 +39,24 @@ def _base_url() -> str:
 
 def _require_gateway_token(
     x_jarvis_postiz_token: str | None = Header(default=None),
+    x_jarvis_remote_token: str | None = Header(default=None),
+    x_jarvis_device_token: str | None = Header(default=None),
 ) -> None:
     expected = settings.postiz_gateway_token.strip()
-    if not expected:
+    if expected and x_jarvis_postiz_token and x_jarvis_postiz_token == expected:
+        return
+    if x_jarvis_remote_token or x_jarvis_device_token:
+        _remote_auth(x_jarvis_remote_token, x_jarvis_device_token)
+        return
+    if not expected and not settings.remote_gateway_token.strip():
         raise HTTPException(
             status_code=503,
-            detail="Postiz actions are disabled until JARVIS_POSTIZ_GATEWAY_TOKEN is configured.",
+            detail="Postiz actions are disabled until Jarvis administrator or paired-device auth is configured.",
         )
-    if not x_jarvis_postiz_token or not secrets.compare_digest(
-        x_jarvis_postiz_token, expected
-    ):
-        raise HTTPException(
-            status_code=401,
-            detail="Valid Jarvis Postiz gateway token required.",
-        )
+    raise HTTPException(
+        status_code=401,
+        detail="Jarvis PC administrator or paired-device authorization required.",
+    )
 
 
 async def _request(
