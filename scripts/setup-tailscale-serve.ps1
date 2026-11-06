@@ -14,7 +14,7 @@ if (-not $tailscalePath) {
 try {
   # Serve is tailnet-only; never use Funnel or a public tunnel for the Jarvis API.
   $serveOutput = & $tailscalePath serve --bg 8000 2>&1 | Out-String
-  $statusOutput = & $tailscale.Source serve status 2>&1 | Out-String
+  $statusOutput = & $tailscalePath serve status 2>&1 | Out-String
   $combined = $serveOutput + " " + $statusOutput
   $match = [regex]::Match($combined, 'https://[A-Za-z0-9.-]+\.ts\.net')
   if (-not $match.Success) {
