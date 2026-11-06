@@ -5,10 +5,10 @@ metadata and model IDs only; credentials are decrypted only inside this process.
 """
 from __future__ import annotations
 
-import hashlib
 import secrets
 import sqlite3
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -49,7 +49,8 @@ def _fernet() -> Fernet:
     return Fernet(key)
 
 
-def _db() -> sqlite3.Connection:
+@contextmanager
+def _db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(DB_PATH, timeout=5)
     db.row_factory = sqlite3.Row
@@ -59,7 +60,11 @@ def _db() -> sqlite3.Connection:
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )""")
     db.commit()
-    return db
+    try:
+        yield db
+        db.commit()
+    finally:
+        db.close()
 
 
 def _admin(token: str | None, request: Request) -> None:
