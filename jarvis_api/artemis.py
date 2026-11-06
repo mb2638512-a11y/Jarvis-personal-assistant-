@@ -7,7 +7,6 @@ connected when the upstream daemon is absent.
 from __future__ import annotations
 
 import re
-import secrets
 import uuid
 from typing import Any, Literal
 from urllib.parse import urlsplit
@@ -34,14 +33,6 @@ def _base_url() -> str:
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise HTTPException(status_code=500, detail="ARTEMIS host URL must not contain credentials or query parameters.")
     return raw
-
-
-def _auth(token: str | None) -> None:
-    expected = settings.artemis_gateway_token.strip()
-    if not expected:
-        raise HTTPException(status_code=503, detail="ARTEMIS actions are disabled until JARVIS_ARTEMIS_GATEWAY_TOKEN is configured.")
-    if not token or not secrets.compare_digest(token, expected):
-        raise HTTPException(status_code=401, detail="Valid Jarvis ARTEMIS gateway token required.")
 
 
 def _configured() -> bool:
@@ -93,8 +84,11 @@ class ArtemisTaskRequest(BaseModel):
 
 
 @router.get("/status")
-async def artemis_status(x_jarvis_device_token: str | None = Header(default=None)) -> dict[str, Any]:
-    _remote_auth(None, x_jarvis_device_token)
+async def artemis_status(
+    x_jarvis_remote_token: str | None = Header(default=None),
+    x_jarvis_device_token: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _remote_auth(x_jarvis_remote_token, x_jarvis_device_token)
     if not _configured():
         return {
             "configured": False, "live_connected": False, "ready": False,
@@ -122,9 +116,10 @@ async def artemis_status(x_jarvis_device_token: str | None = Header(default=None
 @router.post("/tasks")
 async def submit_artemis_task(
     body: ArtemisTaskRequest,
+    x_jarvis_remote_token: str | None = Header(default=None),
     x_jarvis_device_token: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    _remote_auth(None, x_jarvis_device_token)
+    _remote_auth(x_jarvis_remote_token, x_jarvis_device_token)
     if not body.user_confirmed:
         raise HTTPException(status_code=403, detail="Android automation requires explicit user confirmation.")
     task_id = str(uuid.uuid4())
