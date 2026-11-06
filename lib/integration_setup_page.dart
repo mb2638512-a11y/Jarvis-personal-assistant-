@@ -15,6 +15,7 @@ class _IntegrationSetupPageState extends State<IntegrationSetupPage> {
   final _postizKey = TextEditingController();
   final _artemisUrl = TextEditingController(text: 'http://127.0.0.1:8765');
   final _artemisToken = TextEditingController();
+  final _artemisGoogleKey = TextEditingController();
   bool _postizConfigured = false;
   bool _artemisConfigured = false;
   bool _busy = false;
@@ -31,7 +32,7 @@ class _IntegrationSetupPageState extends State<IntegrationSetupPage> {
 
   @override
   void dispose() {
-    _postizUrl.dispose(); _postizKey.dispose(); _artemisUrl.dispose(); _artemisToken.dispose();
+    _postizUrl.dispose(); _postizKey.dispose(); _artemisUrl.dispose(); _artemisToken.dispose(); _artemisGoogleKey.dispose();
     super.dispose();
   }
 
@@ -77,7 +78,7 @@ class _IntegrationSetupPageState extends State<IntegrationSetupPage> {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(isPostiz
           ? {'base_url': base, 'api_key': secret}
-          : {'base_url': base, 'gateway_token': secret}),
+          : {'base_url': base, 'gateway_token': secret, 'google_api_key': _artemisGoogleKey.text.trim()}),
       ).timeout(const Duration(seconds: 15));
       final body = jsonDecode(response.body);
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -124,6 +125,8 @@ class _IntegrationSetupPageState extends State<IntegrationSetupPage> {
             TextField(controller: _artemisUrl, decoration: const InputDecoration(labelText: 'Private ARTEMIS host URL', helperText: 'Use localhost when the ARTEMIS daemon runs on this PC.')),
             const SizedBox(height: 10),
             TextField(controller: _artemisToken, obscureText: true, autocorrect: false, decoration: const InputDecoration(labelText: 'ARTEMIS gateway token')),
+            const SizedBox(height: 10),
+            TextField(controller: _artemisGoogleKey, obscureText: true, autocorrect: false, decoration: const InputDecoration(labelText: 'Google Gemini API key for ARTEMIS', helperText: 'Optional but required for the upstream default Gemini agents. Stored encrypted on the PC.')),
             const SizedBox(height: 10),
             FilledButton.icon(onPressed: _busy ? null : () => _save('artemis'), icon: const Icon(Icons.lock), label: const Text('Save ARTEMIS credentials')),
           ]))),
