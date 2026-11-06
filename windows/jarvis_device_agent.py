@@ -50,7 +50,11 @@ KEYS = {
 
 def request_json(path: str, body: dict[str, Any] | None = None, timeout: float = 15) -> dict[str, Any]:
     data = None if body is None else json.dumps(body).encode("utf-8")
-    headers = {"X-Jarvis-Remote-Token": TOKEN, "Accept": "application/json"}
+    headers = {
+        "X-Jarvis-Remote-Token": TOKEN,
+        "X-Jarvis-Agent-Id": AGENT_ID,
+        "Accept": "application/json",
+    }
     if data is not None:
         headers["Content-Type"] = "application/json"
     req = urllib.request.Request(BASE_URL + path, data=data, headers=headers)
