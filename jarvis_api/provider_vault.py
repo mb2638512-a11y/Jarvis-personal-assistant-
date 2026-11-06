@@ -18,6 +18,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
 from jarvis_api.config import settings
+from jarvis_api.remote_control import _auth as _remote_auth
 
 router = APIRouter(prefix="/api/models/providers", tags=["PC provider vault"])
 ROOT = Path(__file__).resolve().parent.parent
@@ -181,7 +182,8 @@ def active_provider() -> dict[str, str] | None:
 
 
 @router.get("/catalog")
-async def shared_catalog() -> dict[str, Any]:
+async def shared_catalog(x_jarvis_device_token: str | None = Header(default=None)) -> dict[str, Any]:
+    _remote_auth(None, x_jarvis_device_token)
     with _db() as db:
         rows = db.execute("SELECT * FROM providers ORDER BY active DESC, created_at DESC").fetchall()
     catalogue = []
