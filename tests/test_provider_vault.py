@@ -62,3 +62,10 @@ def test_provider_vault_rejects_non_https_remote_provider_url():
         },
     )
     assert response.status_code == 422
+
+
+def test_shared_catalog_requires_a_paired_device_token(monkeypatch):
+    monkeypatch.setattr(settings, "remote_gateway_token", "test-admin-token")
+    response = client.get("/api/models/providers/catalog")
+    assert response.status_code == 401
+    assert "credentials_exposed" not in response.text
