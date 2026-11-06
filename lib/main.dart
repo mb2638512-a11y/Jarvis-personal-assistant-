@@ -118,7 +118,9 @@ class _ChatPageState extends State<ChatPage> {
     ),
   ];
 
-  String baseUrl = 'http://10.0.2.2:8000';
+  String baseUrl = defaultTargetPlatform == TargetPlatform.windows
+      ? 'http://127.0.0.1:8000'
+      : 'http://10.0.2.2:8000';
   bool busy = false;
   bool checking = false;
   bool backendOnline = false;
