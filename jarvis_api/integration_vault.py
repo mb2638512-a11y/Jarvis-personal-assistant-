@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from cryptography.fernet import InvalidToken
 from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
@@ -64,7 +65,7 @@ def get_integration_config(name: str) -> dict[str, str] | None:
         raw = _fernet().decrypt(row["encrypted_payload"]).decode("utf-8")
         data = json.loads(raw)
         return data if isinstance(data, dict) else None
-    except (ValueError, UnicodeDecodeError, json.JSONDecodeError, sqlite3.Error):
+    except (InvalidToken, ValueError, UnicodeDecodeError, json.JSONDecodeError, sqlite3.Error):
         return None
 
 
