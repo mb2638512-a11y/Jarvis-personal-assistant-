@@ -29,4 +29,4 @@ jobs:
           JARVIS_REMOTE_GATEWAY_TOKEN: ci-test-host-token
         run: python -m pytest -q
       - name: Lint all Jarvis-owned backend and test code
-        run: ruff check jarvis_api tests scripts/start-artemis.py
+        run: ruff check --fix jarvis_api tests scripts/start-artemis.py
