@@ -6,13 +6,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
-from jarvis_api.config import settings
 from jarvis_api.artemis import router as artemis_router
+from jarvis_api.config import settings
+from jarvis_api.device_pairing import router as device_pairing_router
 from jarvis_api.integrations import router as integrations_router
 from jarvis_api.mcp_registry import router as mcp_router
-from jarvis_api.postiz import router as postiz_router
-from jarvis_api.device_pairing import router as device_pairing_router
 from jarvis_api.model_catalog import router as model_catalog_router
+from jarvis_api.postiz import router as postiz_router
 from jarvis_api.provider_vault import router as provider_vault_router, active_provider
 from jarvis_api.remote_control import router as remote_control_router
 from jarvis_api.social_oauth import router as social_oauth_router
