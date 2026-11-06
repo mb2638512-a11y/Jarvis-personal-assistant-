@@ -16,6 +16,7 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, Field, field_validator
 
 from jarvis_api.config import settings
+from jarvis_api.integration_vault import get_integration_config
 from jarvis_api.remote_control import _auth as _remote_auth
 
 router = APIRouter(prefix="/api/artemis", tags=["ARTEMIS Android automation"])
@@ -23,7 +24,8 @@ DEVICE_RE = re.compile(r"^[A-Za-z0-9._:-]{2,128}$")
 
 
 def _base_url() -> str:
-    raw = settings.artemis_base_url.strip().rstrip("/")
+    config = get_integration_config("artemis") or {}
+    raw = (config.get("base_url") or settings.artemis_base_url).strip().rstrip("/")
     if not raw:
         raise HTTPException(status_code=503, detail="ARTEMIS host is not configured.")
     parsed = urlsplit(raw)
@@ -36,12 +38,14 @@ def _base_url() -> str:
 
 
 def _configured() -> bool:
-    return bool(settings.artemis_base_url.strip() and settings.artemis_gateway_token.strip())
+    config = get_integration_config("artemis") or {}
+    return bool((config.get("base_url") or settings.artemis_base_url.strip()) and (config.get("gateway_token") or settings.artemis_gateway_token.strip()))
 
 
 async def _request(method: str, path: str, *, body: dict[str, Any] | None = None) -> Any:
     base = _base_url()
-    token = settings.artemis_gateway_token.strip()
+    config = get_integration_config("artemis") or {}
+    token = config.get("gateway_token") or settings.artemis_gateway_token.strip()
     try:
         async with httpx.AsyncClient(timeout=settings.artemis_timeout_seconds, follow_redirects=False) as client:
             response = await client.request(
