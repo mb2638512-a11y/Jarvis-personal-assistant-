@@ -99,14 +99,18 @@ async def redeem_challenge(body: RedeemRequest):
             raise HTTPException(status_code=410, detail="Pairing challenge expired, used, or locked.")
         if not secrets.compare_digest(row["code_hash"], _hash(body.code)):
             db.execute("UPDATE challenges SET attempts=attempts+1 WHERE id=?", (body.challenge_id,))
-            raise HTTPException(status_code=401, detail="Incorrect pairing code.")
-        db.execute("UPDATE challenges SET used=1 WHERE id=?", (body.challenge_id,))
-        device_id = str(uuid.uuid4())
-        credential = secrets.token_urlsafe(32)
-        db.execute(
-            "INSERT INTO devices(id,label,platform,token_hash,created_at) VALUES(?,?,?,?,?)",
-            (device_id, body.device_label.strip(), body.platform, _hash(credential), now),
-        )
+            bad_code = True
+        else:
+            bad_code = False
+            db.execute("UPDATE challenges SET used=1 WHERE id=?", (body.challenge_id,))
+            device_id = str(uuid.uuid4())
+            credential = secrets.token_urlsafe(32)
+            db.execute(
+                "INSERT INTO devices(id,label,platform,token_hash,created_at) VALUES(?,?,?,?,?)",
+                (device_id, body.device_label.strip(), body.platform, _hash(credential), now),
+            )
+    if bad_code:
+        raise HTTPException(status_code=401, detail="Incorrect pairing code.")
     return {"paired": True, "device_id": device_id, "device_token": credential,
             "platform": body.platform, "created_at": now,
             "note": "Store device_token in OS secure storage. It is returned only once."}
