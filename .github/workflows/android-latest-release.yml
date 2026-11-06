@@ -3,6 +3,7 @@ name: Jarvis Android Latest Release
 on:
   push:
     branches:
+      - pc-host
       - android
   workflow_dispatch:
 
@@ -18,7 +19,7 @@ jobs:
     name: Build and publish latest Android APK
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Android branch
+      - name: Checkout current Jarvis source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -78,7 +79,7 @@ jobs:
           tag_name: android-latest
           name: Jarvis Android — Latest
           body: |
-            Automatically replaced by each successful build on the `android` branch.
+            Automatically replaced by each successful build from the current Jarvis source branch.
             This release intentionally keeps only the newest APK.
           files: build/app/outputs/flutter-apk/app-release.apk
           overwrite_files: true
