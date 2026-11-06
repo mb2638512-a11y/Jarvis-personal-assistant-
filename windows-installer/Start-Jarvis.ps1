@@ -11,6 +11,13 @@ $agentArgs = ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $agentScript)
 Start-Process powershell.exe -WindowStyle Minimized -ArgumentList $hostArgs -WorkingDirectory $HostRoot
 Start-Sleep -Seconds 3
 Start-Process powershell.exe -WindowStyle Minimized -ArgumentList $agentArgs -WorkingDirectory $HostRoot
+# ARTEMIS is an optional, PC-hosted Android automation runtime. Its launcher
+# exits quickly when no Google API key has been configured in the PC vault.
+$artemisScript = Join-Path $HostRoot "scripts\start-artemis.ps1"
+if (Test-Path $artemisScript) {
+  $artemisArgs = ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $artemisScript)
+  Start-Process powershell.exe -WindowStyle Minimized -ArgumentList $artemisArgs -WorkingDirectory $HostRoot
+}
 $healthy = $false
 for ($i = 0; $i -lt 20; $i++) {
   try { $response = Invoke-WebRequest -Uri "http://127.0.0.1:8000/health" -UseBasicParsing -TimeoutSec 2; if ($response.StatusCode -eq 200) { $healthy = $true; break } }
