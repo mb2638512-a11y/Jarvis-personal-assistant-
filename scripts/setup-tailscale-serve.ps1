@@ -3,19 +3,17 @@ $ErrorActionPreference = "Stop"
 $envFile = Join-Path (Get-Location) ".env"
 if (-not (Test-Path $envFile)) { throw "Jarvis .env is missing." }
 
-$tailscale = Get-Command tailscale.exe -ErrorAction SilentlyContinue
-if (-not $tailscale) {
-  $candidate = Join-Path $env:ProgramFiles "Tailscale\tailscale.exe"
-  if (Test-Path $candidate) { $tailscale = Get-Item $candidate }
-}
-if (-not $tailscale) {
+$tailscaleCommand = Get-Command tailscale.exe -ErrorAction SilentlyContinue
+$tailscalePath = if ($tailscaleCommand) { $tailscaleCommand.Source } else { Join-Path $env:ProgramFiles "Tailscale\tailscale.exe" }
+if (-not (Test-Path $tailscalePath)) { $tailscalePath = $null }
+if (-not $tailscalePath) {
   Write-Warning "Tailscale is not installed. Install and sign in to Tailscale on both PC and Android to enable private HTTPS pairing."
   return
 }
 
 try {
   # Serve is tailnet-only; never use Funnel or a public tunnel for the Jarvis API.
-  $serveOutput = & $tailscale.Source serve --bg 8000 2>&1 | Out-String
+  $serveOutput = & $tailscalePath serve --bg 8000 2>&1 | Out-String
   $statusOutput = & $tailscale.Source serve status 2>&1 | Out-String
   $combined = $serveOutput + " " + $statusOutput
   $match = [regex]::Match($combined, 'https://[A-Za-z0-9.-]+\.ts\.net')
