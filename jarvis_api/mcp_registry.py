@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -117,7 +118,7 @@ async def discover_tools(url: str) -> list[dict[str, Any]]:
 
 @router.get("/servers")
 async def list_servers() -> dict[str, Any]:
-    with _db() as db:
+    with closing(_db()) as db:
         rows = db.execute("SELECT * FROM mcp_servers ORDER BY created_at DESC").fetchall()
     servers = []
     for row in rows:
