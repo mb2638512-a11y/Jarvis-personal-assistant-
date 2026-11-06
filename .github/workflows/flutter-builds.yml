@@ -1,0 +1,98 @@
+name: Jarvis Windows and Android builds
+
+on:
+  pull_request:
+    branches: [pc-host]
+    paths:
+      - "lib/**"
+      - "pubspec.yaml"
+      - "windows-installer/**"
+      - "scripts/**"
+      - "jarvis_api/**"
+      - "backend/vendor/**"
+      - ".github/workflows/flutter-builds.yml"
+  push:
+    branches: [feature/pc-first-dual-device-integration]
+    paths:
+      - "lib/**"
+      - "pubspec.yaml"
+      - "windows-installer/**"
+      - "scripts/**"
+      - "jarvis_api/**"
+      - "backend/vendor/**"
+      - ".github/workflows/flutter-builds.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  android-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Generate Android platform scaffold
+        run: flutter create --platforms=android --project-name jarvis_personal_assistant .
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+      - name: Analyze Dart source
+        run: flutter analyze
+      - name: Build release APK
+        run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Jarvis-Android-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  windows-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Generate Windows platform scaffold
+        run: flutter create --platforms=windows --project-name jarvis_personal_assistant .
+      - name: Resolve Flutter dependencies
+        run: flutter pub get
+      - name: Analyze Dart source
+        run: flutter analyze
+      - name: Build Windows release app
+        run: flutter build windows --release
+      - name: Stage self-contained Jarvis host and desktop app
+        shell: pwsh
+        run: |
+          $bundle = "build/installer-bundle"
+          New-Item -ItemType Directory -Force -Path "$bundle/host", "$bundle/app" | Out-Null
+          Copy-Item "jarvis_api" "$bundle/host/jarvis_api" -Recurse -Force
+          Copy-Item "backend/vendor" "$bundle/host/backend" -Recurse -Force
+          Copy-Item "scripts" "$bundle/host/scripts" -Recurse -Force
+          Copy-Item "windows" "$bundle/host/windows" -Recurse -Force
+          Copy-Item "pyproject.toml" "$bundle/host/pyproject.toml" -Force
+          Copy-Item ".env.example" "$bundle/host/.env.example" -Force
+          Copy-Item "build/windows/x64/runner/Release/*" "$bundle/app" -Recurse -Force
+          Copy-Item "windows-installer/Install-Jarvis.ps1" "$bundle/Install-Jarvis.ps1" -Force
+          Copy-Item "windows-installer/Start-Jarvis.ps1" "$bundle/Start-Jarvis.ps1" -Force
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "build/installer-output" | Out-Null
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "windows-installer/Jarvis.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed." }
+      - name: Package portable Windows build
+        shell: pwsh
+        run: Compress-Archive -Path "build/installer-bundle/app/*" -DestinationPath "build/installer-output/Jarvis-Windows-x64.zip" -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Jarvis-Windows-Installer
+          path: |
+            build/installer-output/Jarvis-Setup.exe
+            build/installer-output/Jarvis-Windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14
