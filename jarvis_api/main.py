@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 from jarvis_api.artemis import router as artemis_router
 from jarvis_api.config import settings
 from jarvis_api.device_pairing import router as device_pairing_router
-from jarvis_api.integration_vault import router as integration_vault_router
+from jarvis_api.integration_vault import get_integration_config, router as integration_vault_router
 from jarvis_api.integrations import router as integrations_router
 from jarvis_api.mcp_registry import router as mcp_router
 from jarvis_api.model_catalog import router as model_catalog_router
@@ -58,14 +58,17 @@ async def health() -> dict[str, str]:
 @app.get("/status")
 async def status() -> dict[str, object]:
     configured = bool(active_provider() or (settings.api_key.strip() and settings.model.strip()))
+    postiz_config = get_integration_config("postiz") or {}
+    artemis_config = get_integration_config("artemis") or {}
     return {
         "service": "jarvis-api",
         "provider": "openai-compatible",
         "configured": configured,
         "ready": configured,
-        "postiz_configured": bool(settings.postiz_app_url.strip() or settings.postiz_api_key.strip()),
+        "postiz_configured": bool(postiz_config.get("api_key") or settings.postiz_api_key.strip()),
+        "artemis_configured": bool(artemis_config.get("gateway_token") or settings.artemis_gateway_token.strip()),
         "social_oauth_configured": bool(settings.postiz_app_url.strip()),
-        "note": "Configuration status only; a successful provider request has not been verified by this endpoint.",
+        "note": "Configuration status only; successful third-party connections must be checked separately.",
     }
 
 
