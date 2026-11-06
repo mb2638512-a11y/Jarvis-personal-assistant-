@@ -46,9 +46,13 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$root/app", "$root/host" | Out-Null
           Copy-Item "build/windows/x64/runner/Release/*" "$root/app" -Recurse -Force
           Copy-Item ".env.example", "pyproject.toml" "$root/host" -Force
-          foreach ($folder in @("jarvis_api", "windows", "scripts", "backend")) {
+          foreach ($folder in @("jarvis_api", "scripts", "backend")) {
             if (Test-Path $folder) { Copy-Item $folder "$root/host/$folder" -Recurse -Force }
           }
+          # Copy only Jarvis Python host modules. Do not package Flutter's
+          # generated windows/flutter/ephemeral plugin symlinks.
+          New-Item -ItemType Directory -Force -Path "$root/host/windows" | Out-Null
+          Copy-Item "windows/jarvis_desktop.py", "windows/jarvis_device_agent.py" "$root/host/windows/" -Force
           if (Test-Path "web") { Copy-Item "web" "$root/host/web" -Recurse -Force }
           Copy-Item "windows-installer/Install-Jarvis.ps1" "$root/Install-Jarvis.ps1" -Force
           Copy-Item "windows-installer/Start-Jarvis.ps1" "$root/Start-Jarvis.ps1" -Force
