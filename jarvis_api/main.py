@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from jarvis_api.config import settings
+from jarvis_api.artemis import router as artemis_router
 from jarvis_api.integrations import router as integrations_router
 from jarvis_api.postiz import router as postiz_router
 from jarvis_api.remote_control import router as remote_control_router
@@ -15,6 +16,7 @@ from jarvis_api.wellbeing import router as wellbeing_router
 
 app = FastAPI(title="Jarvis Personal Assistant API", version="0.2.0")
 app.include_router(postiz_router)
+app.include_router(artemis_router)
 app.include_router(integrations_router)
 app.include_router(social_oauth_router)
 app.include_router(remote_control_router)
