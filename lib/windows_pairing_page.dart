@@ -16,6 +16,8 @@ class _WindowsPairingPageState extends State<WindowsPairingPage> {
   String? _qr;
   String _code = '';
   final List<Map<String, dynamic>> _devices = [];
+  final List<Map<String, dynamic>> _pending = [];
+  Timer? _pendingTimer;
   String _status = 'Generate a one-time QR code for your Android phone.';
   DateTime? _expiresAt;
   bool _busy = false;
@@ -84,6 +86,8 @@ class _WindowsPairingPageState extends State<WindowsPairingPage> {
   void initState() {
     super.initState();
     _loadDevices();
+    _loadPending();
+    _pendingTimer = Timer.periodic(const Duration(seconds: 2), (_) => _loadPending());
   }
 
   Future<void> _loadDevices() async {
@@ -101,6 +105,43 @@ class _WindowsPairingPageState extends State<WindowsPairingPage> {
         });
       }
     } catch (_) {}
+  }
+
+  Future<void> _loadPending() async {
+    final base = Uri.tryParse(widget.backendUrl.trim());
+    if (base == null || !{'localhost', '127.0.0.1'}.contains(base.host)) return;
+    final uri = base.replace(path: '/api/pairing/pending', query: null, fragment: null);
+    try {
+      final response = await http.get(uri).timeout(const Duration(seconds: 8));
+      final body = jsonDecode(response.body);
+      if (response.statusCode == 200 && body is Map && body['requests'] is List && mounted) {
+        setState(() {
+          _pending
+            ..clear()
+            ..addAll((body['requests'] as List).whereType<Map>().map((d) => Map<String, dynamic>.from(d)));
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _decide(String id, bool approve) async {
+    final base = Uri.tryParse(widget.backendUrl.trim());
+    if (base == null) return;
+    final action = approve ? 'approve' : 'deny';
+    final uri = base.replace(path: '/api/pairing/pending/$id/$action', query: null, fragment: null);
+    try {
+      final response = await http.post(uri).timeout(const Duration(seconds: 10));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final data = jsonDecode(response.body);
+        throw Exception(data is Map ? (data['detail'] ?? 'Pairing decision failed.') : 'HTTP ' + response.statusCode.toString());
+      }
+      await _loadPending();
+      if (mounted) setState(() => _status = approve
+        ? 'Device approved. The phone can now finish pairing.'
+        : 'Pairing request denied.');
+    } catch (error) {
+      if (mounted) setState(() => _status = 'Could not update pairing request: ' + error.toString());
+    }
   }
 
   Future<void> _revoke(String id, String label) async {
@@ -129,7 +170,7 @@ class _WindowsPairingPageState extends State<WindowsPairingPage> {
   }
 
   @override
-  void dispose() { _timer?.cancel(); super.dispose(); }
+  void dispose() { _timer?.cancel(); _pendingTimer?.cancel(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -165,6 +206,33 @@ class _WindowsPairingPageState extends State<WindowsPairingPage> {
                 label: Text(_qr == null ? 'Generate pairing QR' : 'Generate a new QR'),
               ),
               const SizedBox(height: 18),
+              Row(children: [
+                const Expanded(child: Text('APPROVAL REQUESTS', style: TextStyle(color: Color(0xffffd27a), fontWeight: FontWeight.w800, letterSpacing: 1.2))),
+                IconButton(onPressed: _loadPending, icon: const Icon(Icons.refresh), tooltip: 'Refresh pending approvals'),
+              ]),
+              if (_pending.isEmpty)
+                const Text('No devices waiting for approval.', style: TextStyle(color: Color(0xffa6b8ca)))
+              else
+                ..._pending.map((request) {
+                  final id = request['id']?.toString() ?? '';
+                  final label = request['label']?.toString() ?? 'Android device';
+                  final platform = request['platform']?.toString() ?? 'unknown';
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                        Text('Platform: ' + platform + ' · one-time QR request', style: const TextStyle(color: Color(0xffa6b8ca), fontSize: 12)),
+                        Row(children: [
+                          TextButton(onPressed: () => _decide(id, false), child: const Text('Deny')),
+                          const Spacer(),
+                          FilledButton.icon(onPressed: () => _decide(id, true), icon: const Icon(Icons.verified_user), label: const Text('Approve')),
+                        ]),
+                      ]),
+                    ),
+                  );
+                }),
+              const SizedBox(height: 16),
               Row(children: [
                 const Expanded(child: Text('PAIRED DEVICES', style: TextStyle(color: Color(0xff80e2fb), fontWeight: FontWeight.w800, letterSpacing: 1.2))),
                 IconButton(onPressed: _loadDevices, icon: const Icon(Icons.refresh), tooltip: 'Refresh devices'),
