@@ -165,8 +165,8 @@ async def remote_status(x_jarvis_remote_token: str | None = Header(default=None)
 
 
 @router.post("/agents/register")
-async def register_agent(body: AgentRegistration, x_jarvis_remote_token: str | None = Header(default=None)) -> dict[str, Any]:
-    _auth(x_jarvis_remote_token)
+async def register_agent(body: AgentRegistration, x_jarvis_remote_token: str | None = Header(default=None), x_jarvis_device_token: str | None = Header(default=None)) -> dict[str, Any]:
+    _auth(x_jarvis_remote_token, x_jarvis_device_token)
     now = time.time()
     with _db() as db:
         db.execute(
@@ -178,8 +178,8 @@ async def register_agent(body: AgentRegistration, x_jarvis_remote_token: str | N
 
 
 @router.post("/agents/{agent_id}/heartbeat")
-async def heartbeat(agent_id: str, x_jarvis_remote_token: str | None = Header(default=None)) -> dict[str, Any]:
-    _auth(x_jarvis_remote_token)
+async def heartbeat(agent_id: str, x_jarvis_remote_token: str | None = Header(default=None), x_jarvis_device_token: str | None = Header(default=None)) -> dict[str, Any]:
+    _auth(x_jarvis_remote_token, x_jarvis_device_token)
     agent_id = _valid_device_id(agent_id)
     with _db() as db:
         cur = db.execute("UPDATE agents SET last_seen=?,status='online' WHERE id=?", (time.time(), agent_id))
@@ -189,8 +189,8 @@ async def heartbeat(agent_id: str, x_jarvis_remote_token: str | None = Header(de
 
 
 @router.post("/tasks")
-async def create_task(body: RemoteTaskRequest, x_jarvis_remote_token: str | None = Header(default=None)) -> dict[str, Any]:
-    _auth(x_jarvis_remote_token)
+async def create_task(body: RemoteTaskRequest, x_jarvis_remote_token: str | None = Header(default=None), x_jarvis_device_token: str | None = Header(default=None)) -> dict[str, Any]:
+    _auth(x_jarvis_remote_token, x_jarvis_device_token)
     _validate_action(body)
     task_id = str(uuid.uuid4())
     now = time.time()
@@ -208,8 +208,8 @@ async def create_task(body: RemoteTaskRequest, x_jarvis_remote_token: str | None
 
 
 @router.get("/agents/{agent_id}/tasks")
-async def poll_tasks(agent_id: str, x_jarvis_remote_token: str | None = Header(default=None)) -> dict[str, Any]:
-    _auth(x_jarvis_remote_token)
+async def poll_tasks(agent_id: str, x_jarvis_remote_token: str | None = Header(default=None), x_jarvis_device_token: str | None = Header(default=None)) -> dict[str, Any]:
+    _auth(x_jarvis_remote_token, x_jarvis_device_token)
     agent_id = _valid_device_id(agent_id)
     now = time.time()
     with _db() as db:
@@ -231,9 +231,9 @@ async def poll_tasks(agent_id: str, x_jarvis_remote_token: str | None = Header(d
 
 
 @router.get("/tasks/{task_id}")
-async def get_task(task_id: str, x_jarvis_remote_token: str | None = Header(default=None)) -> dict[str, Any]:
+async def get_task(task_id: str, x_jarvis_remote_token: str | None = Header(default=None), x_jarvis_device_token: str | None = Header(default=None)) -> dict[str, Any]:
     """Return the status/result of one task so the phone can confirm real execution."""
-    _auth(x_jarvis_remote_token)
+    _auth(x_jarvis_remote_token, x_jarvis_device_token)
     try:
         uuid.UUID(task_id)
     except ValueError as exc:
@@ -275,8 +275,9 @@ async def finish_task(
     body: TaskResult,
     x_jarvis_remote_token: str | None = Header(default=None),
     x_jarvis_agent_id: str | None = Header(default=None),
+    x_jarvis_device_token: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    _auth(x_jarvis_remote_token)
+    _auth(x_jarvis_remote_token, x_jarvis_device_token)
     if not x_jarvis_agent_id:
         raise HTTPException(status_code=401, detail="Registered agent id header required.")
     agent_id = _valid_device_id(x_jarvis_agent_id)
