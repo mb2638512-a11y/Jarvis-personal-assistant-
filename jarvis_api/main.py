@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Literal
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
@@ -14,7 +14,7 @@ from jarvis_api.mcp_registry import router as mcp_router
 from jarvis_api.model_catalog import router as model_catalog_router
 from jarvis_api.postiz import router as postiz_router
 from jarvis_api.provider_vault import router as provider_vault_router, active_provider
-from jarvis_api.remote_control import router as remote_control_router
+from jarvis_api.remote_control import router as remote_control_router, _auth as _remote_auth
 from jarvis_api.social_oauth import router as social_oauth_router
 from jarvis_api.wellbeing import router as wellbeing_router
 
@@ -68,7 +68,15 @@ async def status() -> dict[str, object]:
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat(body: ChatRequest) -> ChatResponse:
+async def chat(
+    body: ChatRequest,
+    request: Request,
+    x_jarvis_remote_token: str | None = Header(default=None),
+    x_jarvis_device_token: str | None = Header(default=None),
+) -> ChatResponse:
+    peer = request.client.host if request.client else ""
+    if peer not in {"127.0.0.1", "::1", "localhost"}:
+        _remote_auth(x_jarvis_remote_token, x_jarvis_device_token)
     provider = active_provider()
     api_key = provider["api_key"] if provider else settings.api_key.strip()
     model = provider["model"] if provider else settings.model.strip()
