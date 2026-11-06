@@ -11,7 +11,7 @@ import secrets
 from typing import Any, Literal
 
 import httpx
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import AnyHttpUrl, BaseModel, Field
 
 from jarvis_api.config import settings
@@ -39,10 +39,14 @@ def _base_url() -> str:
 
 
 def _require_gateway_token(
+    request: Request,
     x_jarvis_postiz_token: str | None = Header(default=None),
     x_jarvis_remote_token: str | None = Header(default=None),
     x_jarvis_device_token: str | None = Header(default=None),
 ) -> None:
+    peer = request.client.host if request.client else ""
+    if peer in {"127.0.0.1", "::1", "localhost"}:
+        return
     expected = settings.postiz_gateway_token.strip()
     if expected and x_jarvis_postiz_token and secrets.compare_digest(x_jarvis_postiz_token, expected):
         return
