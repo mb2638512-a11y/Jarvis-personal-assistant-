@@ -128,8 +128,8 @@ async def redeem_challenge(body: RedeemRequest):
 
 
 @router.get("/devices")
-async def list_devices(x_jarvis_remote_token: str | None = Header(default=None)):
-    _admin(x_jarvis_remote_token)
+async def list_devices(request: Request, x_jarvis_remote_token: str | None = Header(default=None)):
+    _admin(x_jarvis_remote_token, request)
     with _db() as db:
         rows = db.execute(
             "SELECT id,label,platform,created_at,revoked FROM devices ORDER BY created_at DESC"
@@ -138,8 +138,8 @@ async def list_devices(x_jarvis_remote_token: str | None = Header(default=None))
 
 
 @router.delete("/devices/{device_id}")
-async def revoke_device(device_id: str, x_jarvis_remote_token: str | None = Header(default=None)):
-    _admin(x_jarvis_remote_token)
+async def revoke_device(device_id: str, request: Request, x_jarvis_remote_token: str | None = Header(default=None)):
+    _admin(x_jarvis_remote_token, request)
     with _db() as db:
         cur = db.execute("UPDATE devices SET revoked=1 WHERE id=?", (device_id,))
         if cur.rowcount == 0:
