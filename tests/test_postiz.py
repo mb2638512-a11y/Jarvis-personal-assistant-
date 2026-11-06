@@ -32,6 +32,7 @@ def test_postiz_actions_require_gateway_token(monkeypatch):
 def test_postiz_actions_disabled_without_gateway_token(monkeypatch):
     configure(monkeypatch)
     monkeypatch.setattr(settings, "postiz_gateway_token", "")
+    monkeypatch.setattr(settings, "remote_gateway_token", "")
     response = client.get("/api/postiz/channels", headers={"X-Jarvis-Postiz-Token": TOKEN})
     assert response.status_code == 503
 
