@@ -9,7 +9,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'wellbeing_page.dart';
 import 'device_health_page.dart';
 import 'model_hub_page.dart';
-import 'llm_client.dart';
 import 'device_pairing_page.dart';
 import 'windows_pairing_page.dart';
 import 'artemis_control_page.dart';
@@ -389,7 +388,11 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> remoteControl() async {
     final messenger = ScaffoldMessenger.of(context);
-    final tokenController = TextEditingController(text: await const FlutterSecureStorage().read(key: 'jarvis.device.token') ?? '');
+    final pairedToken = await const FlutterSecureStorage().read(key: 'jarvis.device.token');
+    if (pairedToken == null || pairedToken.isEmpty) {
+      messenger.showSnackBar(const SnackBar(content: Text('Pair this phone with your Windows Jarvis PC first.')));
+      return;
+    }
     final valueController = TextEditingController();
     String action = 'get_status';
     String targetPlatform = 'windows';
@@ -407,13 +410,6 @@ class _ChatPageState extends State<ChatPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('Connect to your paired Windows agent through the shared Jarvis backend. The Windows agent must be running.'),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: tokenController,
-                    obscureText: true,
-                    autocorrect: false,
-                    decoration: const InputDecoration(labelText: 'Paired device credential (loaded after QR pairing)'),
-                  ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: targetPlatform,
@@ -468,11 +464,6 @@ class _ChatPageState extends State<ChatPage> {
             TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
             FilledButton(
               onPressed: () async {
-                final token = tokenController.text.trim();
-                if (token.isEmpty) {
-                  setDialogState(() => feedback = 'Enter the private gateway token.');
-                  return;
-                }
                 if (['type_text', 'press_key'].contains(action) && !confirmed) {
                   setDialogState(() => feedback = 'Confirm typing/key action first.');
                   return;
@@ -493,7 +484,7 @@ class _ChatPageState extends State<ChatPage> {
                     uri,
                     headers: {
                       'Content-Type': 'application/json',
-                      'X-Jarvis-Device-Token': token,
+                      'X-Jarvis-Device-Token': pairedToken,
                     },
                     body: jsonEncode({
                       'target_platform': targetPlatform,
@@ -515,7 +506,7 @@ class _ChatPageState extends State<ChatPage> {
                     SnackBar(content: Text('Task queued: ${taskId ?? 'unknown'} · waiting for $targetPlatform agent')),
                   );
                   if (taskId != null && taskId.isNotEmpty) {
-                    _watchRemoteTask(taskId, token, messenger);
+                    _watchRemoteTask(taskId, pairedToken, messenger);
                   }
                 } catch (error) {
                   setDialogState(() => feedback = error.toString().replaceFirst('Exception: ', ''));
@@ -527,7 +518,6 @@ class _ChatPageState extends State<ChatPage> {
         ),
       ),
     );
-    tokenController.dispose();
     valueController.dispose();
   }
 
@@ -545,14 +535,8 @@ class _ChatPageState extends State<ChatPage> {
     _scrollToBottom();
 
     try {
-      // Prefer the locally configured LLM providers; use shared backend only when none are configured.
-      final localReply = await LlmClient.send(text);
-      if (localReply != null) {
-        if (mounted) setState(() => messages.add(ChatMessage(localReply, false)));
-        return;
-      }
       if (uri == null) {
-        throw Exception('No local LLM provider is configured and the shared backend URL is invalid. Configure a provider in LLM Settings or fix the backend URL.');
+        throw Exception('The shared PC backend URL is invalid. Pair this device with your Windows Jarvis PC or fix the backend URL.');
       }
       final response = await http
           .post(
@@ -748,7 +732,7 @@ class _ChatPageState extends State<ChatPage> {
     final wide = width >= 650;
     final quickActions = <Widget>[
       _launchTile(icon: Icons.desktop_windows_rounded, title: 'Control your PC', subtitle: 'Run approved remote actions', onTap: remoteControl, compact: !wide),
-      _launchTile(icon: Icons.qr_code_scanner_rounded, title: 'Pair with PC', subtitle: 'Scan the Windows Jarvis QR code', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DevicePairingPage())), compact: !wide),
+      if (defaultTargetPlatform == TargetPlatform.android) _launchTile(icon: Icons.qr_code_scanner_rounded, title: 'Pair with PC', subtitle: 'Scan the Windows Jarvis QR code', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DevicePairingPage())), compact: !wide),
       if (defaultTargetPlatform == TargetPlatform.windows) _launchTile(icon: Icons.qr_code_2_rounded, title: 'Pair phone', subtitle: 'Display a secure QR code for Android', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WindowsPairingPage(backendUrl: baseUrl))), compact: !wide),
       if (defaultTargetPlatform == TargetPlatform.android) _launchTile(icon: Icons.smartphone_rounded, title: 'ARTEMIS automation', subtitle: 'Control Android apps through the PC engine', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ArtemisControlPage(backendUrl: baseUrl))), compact: !wide),
       _launchTile(icon: Icons.phone_android_rounded, title: 'This phone', subtitle: 'Open settings and websites', onTap: phoneActions, compact: !wide),
