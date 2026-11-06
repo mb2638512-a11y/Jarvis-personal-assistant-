@@ -762,7 +762,9 @@ class _ChatPageState extends State<ChatPage> {
       if (defaultTargetPlatform == TargetPlatform.android) _launchTile(icon: Icons.smartphone_rounded, title: 'ARTEMIS automation', subtitle: 'Control Android apps through the PC engine', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ArtemisControlPage(backendUrl: baseUrl))), compact: !wide),
       _launchTile(icon: Icons.phone_android_rounded, title: 'This phone', subtitle: 'Open settings and websites', onTap: phoneActions, compact: !wide),
       _launchTile(icon: Icons.hub_rounded, title: 'Connect apps', subtitle: 'Secure social account links', onTap: openSocialHub, compact: !wide),
-      _launchTile(icon: Icons.account_tree_rounded, title: 'AI models', subtitle: 'Providers, routing and keys', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ModelHubPage(backendUrl: baseUrl, readOnly: defaultTargetPlatform == TargetPlatform.android))), compact: !wide),
+      _launchTile(icon: Icons.campaign_rounded, title: 'Postiz social', subtitle: 'Manage channels, drafts and publishing', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PostizControlPage(backendUrl: baseUrl))), compact: !wide),
+
+      _launchTile(icon: Icons.account_tree_rounded, title: 'Shared AI models', subtitle: 'PC provider vault and model sync', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ModelHubPage(backendUrl: baseUrl, readOnly: defaultTargetPlatform == TargetPlatform.android))), compact: !wide),
     ];
 
     final tools = <Widget>[
