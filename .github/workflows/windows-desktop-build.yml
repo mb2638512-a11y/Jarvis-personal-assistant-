@@ -1,22 +1,22 @@
-name: Jarvis Windows Desktop Build
+name: Jarvis Windows Release
 
 on:
   push:
-    branches: [android]
+    branches: [pc-host]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: jarvis-windows-build
+  group: jarvis-windows-release
   cancel-in-progress: true
 
 jobs:
-  windows-desktop:
+  build-and-release:
     runs-on: windows-latest
     steps:
-      - name: Checkout shared Jarvis app
+      - name: Checkout Jarvis
         uses: actions/checkout@v4
 
       - name: Set up Flutter
@@ -25,7 +25,7 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Generate missing desktop scaffolding
+      - name: Prepare Windows desktop project
         shell: pwsh
         run: |
           flutter --version
@@ -34,25 +34,50 @@ jobs:
           }
           flutter pub get
 
-      - name: Analyze shared Flutter app
-        run: flutter analyze --no-fatal-infos
-
-      - name: Run Flutter tests
-        run: flutter test
+      - name: Analyze and test Flutter app
+        run: |
+          flutter analyze --no-fatal-infos
+          flutter test
 
       - name: Build Windows desktop app
         run: flutter build windows --release
 
-      - name: Verify Windows executable
+      - name: Verify desktop executable
         shell: pwsh
         run: |
           $exe = "build/windows/x64/runner/Release/jarvis_personal_assistant.exe"
           if (!(Test-Path $exe)) { throw "Windows executable not found: $exe" }
 
-      - name: Upload Windows release folder
-        uses: actions/upload-artifact@v4
+      - name: Assemble complete Windows bundle
+        shell: pwsh
+        run: |
+          $root = "dist/Jarvis-Windows"
+          New-Item -ItemType Directory -Force -Path "$root/app", "$root/host" | Out-Null
+          Copy-Item "build/windows/x64/runner/Release/*" "$root/app" -Recurse -Force
+          Copy-Item ".env.example", "pyproject.toml" "$root/host" -Force
+          foreach ($folder in @("jarvis_api", "windows", "scripts", "backend")) {
+            if (Test-Path $folder) { Copy-Item $folder "$root/host/$folder" -Recurse -Force }
+          }
+          if (Test-Path "web") { Copy-Item "web" "$root/host/web" -Recurse -Force }
+          Copy-Item "windows-installer/Install-Jarvis.ps1" "$root/Install-Jarvis.ps1" -Force
+          Copy-Item "windows-installer/Start-Jarvis.ps1" "$root/Start-Jarvis.ps1" -Force
+          if (!(Test-Path "$root/host/scripts/install-windows-host.ps1")) {
+            throw "Windows host installer scripts are missing from the bundle."
+          }
+          Compress-Archive -Path "$root/*" -DestinationPath "dist/Jarvis-Windows-x64.zip" -Force
+
+      - name: Publish latest Windows release
+        uses: softprops/action-gh-release@v2
         with:
-          name: jarvis-windows-x64-release
-          path: build/windows/x64/runner/Release/
-          if-no-files-found: error
-          retention-days: 14
+          tag_name: windows-latest
+          name: Jarvis Windows — Latest
+          body: |
+            Windows x64 desktop + self-hosted PC backend bundle.
+
+            Download Jarvis-Windows-x64.zip, extract it, and run Install-Jarvis.ps1.
+            The installer installs Python 3.11 (through winget if needed), prepares the local backend and Windows agent, and creates a desktop shortcut.
+
+            An AI provider API key and model are still required. Hosted models, Postiz, ARTEMIS, Tailscale and OAuth credentials are not bundled.
+          files: dist/Jarvis-Windows-x64.zip
+          overwrite_files: true
+          make_latest: true
