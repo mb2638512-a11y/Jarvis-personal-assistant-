@@ -18,6 +18,7 @@ class _IntegrationSetupPageState extends State<IntegrationSetupPage> {
   final _artemisGoogleKey = TextEditingController();
   bool _postizConfigured = false;
   bool _artemisConfigured = false;
+  bool _artemisGoogleConfigured = false;
   bool _busy = false;
   String _status = 'Loading encrypted integration settings from this PC…';
 
@@ -52,6 +53,7 @@ class _IntegrationSetupPageState extends State<IntegrationSetupPage> {
       setState(() {
         _postizConfigured = postiz['configured'] == true;
         _artemisConfigured = artemis['configured'] == true;
+        _artemisGoogleConfigured = artemis['llm_key_configured'] == true;
         if (postiz['base_url'] is String) _postizUrl.text = postiz['base_url'] as String;
         if (artemis['base_url'] is String && (artemis['base_url'] as String).isNotEmpty) _artemisUrl.text = artemis['base_url'] as String;
         _status = 'Integration credentials are encrypted on the PC. Secret values are never sent back to this screen.';
@@ -65,6 +67,7 @@ class _IntegrationSetupPageState extends State<IntegrationSetupPage> {
     final isPostiz = name == 'postiz';
     final base = isPostiz ? _postizUrl.text.trim() : _artemisUrl.text.trim();
     final secret = isPostiz ? _postizKey.text.trim() : _artemisToken.text.trim();
+    final googleKey = _artemisGoogleKey.text.trim();
     if (base.isEmpty || secret.isEmpty) {
       setState(() => _status = 'Enter both the service URL and its secret.');
       return;
@@ -78,15 +81,31 @@ class _IntegrationSetupPageState extends State<IntegrationSetupPage> {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(isPostiz
           ? {'base_url': base, 'api_key': secret}
-          : {'base_url': base, 'gateway_token': secret, 'google_api_key': _artemisGoogleKey.text.trim()}),
+          : {'base_url': base, 'gateway_token': secret, 'google_api_key': googleKey}),
       ).timeout(const Duration(seconds: 15));
       final body = jsonDecode(response.body);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw Exception(body is Map ? (body['detail'] ?? 'Could not save integration credentials.') : 'Invalid response.');
       }
-      if (isPostiz) _postizKey.clear(); else _artemisToken.clear();
+      if (isPostiz) {
+        _postizKey.clear();
+      } else {
+        _artemisToken.clear();
+        _artemisGoogleKey.clear();
+        if (googleKey.isNotEmpty) {
+          final startUri = _uri('/api/artemis/host/start');
+          if (startUri != null) {
+            final started = await http.post(startUri).timeout(const Duration(seconds: 15));
+            if (started.statusCode < 200 || started.statusCode >= 300) {
+              throw Exception('ARTEMIS credentials saved, but its local startup could not be launched.');
+            }
+          }
+        }
+      }
       await _load();
-      if (mounted) setState(() => _status = name + ' credentials saved in the encrypted PC vault.');
+      if (mounted) setState(() => _status = isPostiz
+        ? 'Postiz credentials saved in the encrypted PC vault.'
+        : (googleKey.isNotEmpty ? 'ARTEMIS setup started in the background. First installation may take several minutes.' : 'ARTEMIS host settings saved. Add the Google Gemini API key to enable the runtime.'));
     } catch (error) {
       if (mounted) setState(() => _status = error.toString().replaceFirst('Exception: ', ''));
     } finally { if (mounted) setState(() => _busy = false); }
@@ -119,7 +138,7 @@ class _IntegrationSetupPageState extends State<IntegrationSetupPage> {
           Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               const Expanded(child: Text('ARTEMIS · ANDROID AUTOMATION', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1))),
-              Chip(label: Text(_artemisConfigured ? 'CONFIGURED' : 'NOT SET')),
+              Chip(label: Text(!_artemisConfigured ? 'NOT SET' : (_artemisGoogleConfigured ? 'READY TO START' : 'GOOGLE KEY NEEDED'))),
             ]),
             const SizedBox(height: 10),
             TextField(controller: _artemisUrl, decoration: const InputDecoration(labelText: 'Private ARTEMIS host URL', helperText: 'Use localhost when the ARTEMIS daemon runs on this PC.')),
