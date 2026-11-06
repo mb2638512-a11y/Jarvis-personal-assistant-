@@ -46,7 +46,7 @@ Open `http://127.0.0.1:8000/docs` for the OpenAPI interface. Never put provider 
 - `GET /api/postiz/find-slot/{integration_id}`: get the next scheduling slot.
 - `GET /api/postiz/analytics/{integration_id}` and `GET /api/postiz/analytics/post/{id}`: analytics.
 
-See [three-engine runtime integration](docs/THREE_REPO_RUNTIME_INTEGRATION.md), [Postiz integration guide](docs/POSTIZ_INTEGRATION.md), and [shared client API contract](docs/JARVIS_CLIENT_API.md). Protected Postiz action routes require `X-Jarvis-Postiz-Token`. Until Jarvis user authentication and per-user permissions exist, keep them on a trusted network or behind an authenticated private gateway; do not embed this token in Android or Windows clients.
+See [three-engine runtime integration](docs/THREE_REPO_RUNTIME_INTEGRATION.md), [Postiz integration guide](docs/POSTIZ_INTEGRATION.md), and [shared client API contract](docs/JARVIS_CLIENT_API.md). The complete phased delivery and acceptance checklist is in [End-to-end integration programme](docs/END_TO_END_INTEGRATION_PROGRAMME.md). Protected Postiz action routes require `X-Jarvis-Postiz-Token`. Until Jarvis user authentication and per-user permissions exist, keep them on a trusted network or behind an authenticated private gateway; do not embed this token in Android or Windows clients.
 
 ## Verification and releases
 - CI workflow: [Jarvis backend CI](.github/workflows/ci.yml).
