@@ -9,6 +9,7 @@ import 'wellbeing_page.dart';
 import 'device_health_page.dart';
 import 'llm_settings_page.dart';
 import 'llm_client.dart';
+import 'tools_page.dart';
 
 void main() => runApp(const JarvisApp());
 
@@ -727,6 +728,8 @@ class _ChatPageState extends State<ChatPage> {
     ];
 
     final tools = <Widget>[
+      _launchTile(icon: Icons.extension_rounded, title: 'Tools & Connectors', subtitle: 'Add MCP servers and discover tools', compact: true,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ToolsPage(backendUrl: baseUrl)))),
       _launchTile(icon: Icons.health_and_safety_outlined, title: 'Wellbeing', subtitle: 'Usage and personal check-ins', compact: true,
         onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WellbeingPage(backendUrl: baseUrl)))),
       _launchTile(icon: Icons.memory_rounded, title: 'Device health', subtitle: 'Hardware readings and security', compact: true,
@@ -899,6 +902,7 @@ class _ChatPageState extends State<ChatPage> {
               if (value == 'wellbeing') Navigator.of(context).push(MaterialPageRoute(builder: (_) => WellbeingPage(backendUrl: baseUrl)));
               if (value == 'health') Navigator.of(context).push(MaterialPageRoute(builder: (_) => DeviceHealthPage(backendUrl: baseUrl)));
               if (value == 'models') Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LlmSettingsPage()));
+              if (value == 'tools') Navigator.of(context).push(MaterialPageRoute(builder: (_) => ToolsPage(backendUrl: baseUrl)));
               if (value == 'settings') settings();
             },
             itemBuilder: (_) => const [
@@ -908,6 +912,7 @@ class _ChatPageState extends State<ChatPage> {
               PopupMenuItem(value: 'wellbeing', child: Text('Wellbeing dashboard')),
               PopupMenuItem(value: 'health', child: Text('Device health')),
               PopupMenuItem(value: 'models', child: Text('AI model settings')),
+              PopupMenuItem(value: 'tools', child: Text('Tools & Connectors')),
               PopupMenuItem(value: 'settings', child: Text('Backend settings')),
             ],
           ),
