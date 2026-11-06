@@ -73,3 +73,25 @@ def test_pairing_admin_requires_gateway_token(monkeypatch, tmp_path):
     setup(monkeypatch, tmp_path)
     assert client.post("/api/pairing/challenge").status_code == 401
     assert client.get("/api/pairing/devices").status_code == 401
+
+
+def test_paired_device_credential_authenticates_shared_remote_api(monkeypatch, tmp_path):
+    setup(monkeypatch, tmp_path)
+    # Both services share the same data directory in the real PC-hosted backend.
+    import jarvis_api.remote_control as remote
+    monkeypatch.setattr(remote, "DB_PATH", tmp_path / "remote.sqlite3")
+    monkeypatch.setattr(pairing, "DB_PATH", tmp_path / "device_pairing.sqlite3")
+    challenge = client.post("/api/pairing/challenge", headers=ADMIN).json()
+    paired = client.post("/api/pairing/redeem", json={
+        "challenge_id": challenge["challenge_id"], "code": challenge["code"],
+        "device_label": "Mustafa Phone", "platform": "android"
+    }).json()
+    headers = {"X-Jarvis-Device-Token": paired["device_token"]}
+    registered = client.post("/api/remote/agents/register", headers=headers, json={
+        "id": "mustafa-phone", "platform": "android",
+        "capabilities": ["get_status", "open_url"]
+    })
+    assert registered.status_code == 200
+    assert registered.json()["registered"] is True
+    status = client.get("/api/remote/status", headers=headers)
+    assert status.status_code == 200
