@@ -69,7 +69,7 @@ class _IntegrationSetupPageState extends State<IntegrationSetupPage> {
     final secret = isPostiz ? _postizKey.text.trim() : _artemisToken.text.trim();
     final googleKey = _artemisGoogleKey.text.trim();
     if (base.isEmpty || (isPostiz && secret.isEmpty)) {
-      setState(() => _status = 'Enter both the service URL and its secret.');
+      setState(() => _status = 'Enter a valid service URL and any required secret.');
       return;
     }
     final uri = _uri('/api/integration-config/$name');
@@ -92,20 +92,18 @@ class _IntegrationSetupPageState extends State<IntegrationSetupPage> {
       } else {
         _artemisToken.clear();
         _artemisGoogleKey.clear();
-        if (googleKey.isNotEmpty) {
-          final startUri = _uri('/api/artemis/host/start');
-          if (startUri != null) {
-            final started = await http.post(startUri).timeout(const Duration(seconds: 15));
-            if (started.statusCode < 200 || started.statusCode >= 300) {
-              throw Exception('ARTEMIS credentials saved, but its local startup could not be launched.');
-            }
+        final startUri = _uri('/api/artemis/host/start');
+        if (startUri != null) {
+          final started = await http.post(startUri).timeout(const Duration(seconds: 15));
+          if (started.statusCode < 200 || started.statusCode >= 300) {
+            throw Exception('ARTEMIS credentials saved, but its local startup could not be launched.');
           }
         }
       }
       await _load();
       if (mounted) setState(() => _status = isPostiz
         ? 'Postiz credentials saved in the encrypted PC vault.'
-        : (googleKey.isNotEmpty ? 'ARTEMIS setup started in the background. First installation may take several minutes.' : 'ARTEMIS host settings saved. Add the Google Gemini API key to enable the runtime.'));
+        : (_artemisGoogleConfigured ? 'ARTEMIS setup started in the background. First installation may take several minutes.' : 'ARTEMIS host settings saved. Add the Google Gemini API key to enable the runtime.'));
     } catch (error) {
       if (mounted) setState(() => _status = error.toString().replaceFirst('Exception: ', ''));
     } finally { if (mounted) setState(() => _busy = false); }
