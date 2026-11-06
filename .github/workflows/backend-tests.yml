@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# Keep only the newest build/test run for this branch or PR.
+concurrency:
+  group: jarvis-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend-tests:
     runs-on: ubuntu-latest
