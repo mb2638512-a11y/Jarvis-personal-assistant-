@@ -71,3 +71,12 @@ See [three-engine runtime integration](docs/THREE_REPO_RUNTIME_INTEGRATION.md), 
 - Individual reels watched inside Instagram/YouTube/TikTok cannot be reliably inferred from Android app screen time. Reel counts stay unknown unless a reliable source explicitly reports them.
 - Health is voluntary journaling, not medical advice or diagnosis. Security events are reports, not a full antivirus scan.
 - Read [Personal Insights implementation and privacy notes](docs/PERSONAL_INSIGHTS.md) and open the [Device Health dashboard](web/device-health.html). The Windows hardware reporter is `scripts/windows-device-health.py`; it submits CPU/RAM/disk/battery/network metrics to `/api/wellbeing/device-metrics`. Device security reports are accepted by `/api/wellbeing/device-security` when a client submits them. The current Windows reporter does not yet submit security-posture reports. Shared-secret auth is an initial private-network safeguard, not a replacement for user accounts and per-device authorization.
+
+
+## Command Center UI (in development)
+
+- The primary Flutter app screen is the responsive Jarvis Command Center for Android and Windows.
+- The desktop/mobile web reference is available at [web/command-center.html](web/command-center.html).
+- The dashboard reads the shared PC backend health, AI provider status, integrations status and ARTEMIS status endpoints. It displays an unverified/offline state when the backend cannot be reached; it does not fabricate CPU, RAM, agent, model or memory metrics.
+- Quick actions open the existing chat, pairing, model hub, device health, ARTEMIS, Postiz and integration workspaces.
+- The Command Center branch has not yet passed a GitHub Actions build. Do not treat the source commit as a signed installer or production release.
