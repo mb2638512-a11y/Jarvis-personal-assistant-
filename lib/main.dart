@@ -12,6 +12,7 @@ import 'model_hub_page.dart';
 import 'device_pairing_page.dart';
 import 'windows_pairing_page.dart';
 import 'artemis_control_page.dart';
+import 'postiz_control_page.dart';
 import 'tools_page.dart';
 
 void main() => runApp(const JarvisApp());
