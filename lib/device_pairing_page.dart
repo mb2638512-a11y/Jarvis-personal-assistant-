@@ -46,10 +46,12 @@ class _DevicePairingPageState extends State<DevicePairingPage> {
       setState(() => _message = 'For LAN pairing, use HTTPS or a trusted private VPN tunnel. Plain HTTP is blocked.');
       return;
     }
-    setState(() { _busy = true; _message = 'Confirming one-time pairing with your Jarvis PC…'; });
+    setState(() { _busy = true; _message = 'Requesting secure pairing. Approve this phone on the Windows PC…'; });
+    await _scanner.stop();
     try {
+      final redeemUri = host.replace(path: '/api/pairing/redeem', query: null, fragment: null);
       final response = await http.post(
-        host.replace(path: '/api/pairing/redeem', query: null, fragment: null),
+        redeemUri,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'challenge_id': challenge,
@@ -59,16 +61,49 @@ class _DevicePairingPageState extends State<DevicePairingPage> {
         }),
       ).timeout(const Duration(seconds: 15));
       final body = jsonDecode(response.body);
-      if (response.statusCode < 200 || response.statusCode >= 300 || body is! Map || body['device_token'] is! String) {
-        throw Exception(body is Map ? (body['detail'] ?? 'Pairing was rejected.') : 'Invalid pairing response.');
+      if (response.statusCode < 200 || response.statusCode >= 300 || body is! Map ||
+          body['pending_approval'] != true || body['request_id'] is! String) {
+        throw Exception(body is Map ? (body['detail'] ?? 'Pairing request was rejected.') : 'Invalid pairing response.');
       }
-      await _secure.write(key: 'jarvis.device.token', value: body['device_token'] as String);
+      final requestId = body['request_id'] as String;
+      final statusUri = host.replace(path: '/api/pairing/pending/status', query: null, fragment: null);
+      var approved = false;
+      for (var attempt = 0; attempt < 75; attempt++) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        final statusResponse = await http.post(
+          statusUri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'challenge_id': challenge, 'request_id': requestId, 'code': code}),
+        ).timeout(const Duration(seconds: 10));
+        final statusBody = jsonDecode(statusResponse.body);
+        if (statusResponse.statusCode < 200 || statusResponse.statusCode >= 300 || statusBody is! Map) {
+          throw Exception(statusBody is Map ? (statusBody['detail'] ?? 'Pairing status check failed.') : 'Invalid pairing status.');
+        }
+        final status = statusBody['status']?.toString();
+        if (status == 'approved') { approved = true; break; }
+        if (status == 'denied' || status == 'expired') throw Exception('Pairing was denied by the PC or the request expired.');
+        if (mounted) setState(() => _message = 'Waiting for you to approve this Android device on the Windows Jarvis screen…');
+      }
+      if (!approved) throw Exception('PC approval timed out. Generate a new QR and try again.');
+      if (mounted) setState(() => _message = 'Approved. Securing this phone with the shared Jarvis backend…');
+      final completeUri = host.replace(path: '/api/pairing/complete', query: null, fragment: null);
+      final complete = await http.post(
+        completeUri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'challenge_id': challenge, 'request_id': requestId, 'code': code}),
+      ).timeout(const Duration(seconds: 15));
+      final completed = jsonDecode(complete.body);
+      if (complete.statusCode < 200 || complete.statusCode >= 300 || completed is! Map ||
+          completed['device_token'] is! String) {
+        throw Exception(completed is Map ? (completed['detail'] ?? 'PC approved but credential issuance failed.') : 'Invalid credential response.');
+      }
+      await _secure.write(key: 'jarvis.device.token', value: completed['device_token'] as String);
       await _secure.write(key: 'jarvis.shared.backend', value: host.toString().replaceFirst(RegExp(r'/+$'), ''));
       if (!mounted) return;
-      setState(() { _done = true; _message = 'Phone paired securely with this Jarvis PC. You can now use the shared backend.'; });
-      await _scanner.stop();
+      setState(() { _done = true; _message = 'Phone approved and securely paired with this Jarvis PC.'; });
     } catch (error) {
-      if (mounted) setState(() => _message = 'Pairing failed: ${error.toString().replaceFirst('Exception: ', '')}');
+      if (mounted) setState(() => _message = 'Pairing failed: ' + error.toString().replaceFirst('Exception: ', ''));
+      if (mounted && !_done) await _scanner.start();
     } finally {
       if (mounted) setState(() => _busy = false);
     }
