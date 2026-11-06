@@ -23,6 +23,8 @@ if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
 
 New-Item -ItemType Directory -Force -Path $HostRoot,$AppRoot | Out-Null
 Copy-Item (Join-Path $BundleRoot "host\*") $HostRoot -Recurse -Force
+$envExample = Join-Path $BundleRoot "host\.env.example"
+if (Test-Path $envExample) { Copy-Item $envExample (Join-Path $HostRoot ".env.example") -Force }
 Copy-Item (Join-Path $BundleRoot "app\*") $AppRoot -Recurse -Force
 Copy-Item (Join-Path $BundleRoot "Start-Jarvis.ps1") (Join-Path $InstallRoot "Start-Jarvis.ps1") -Force
 
