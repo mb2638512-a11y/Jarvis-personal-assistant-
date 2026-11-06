@@ -7,7 +7,6 @@ gateway or a local MCP proxy until per-user secret storage is implemented.
 from __future__ import annotations
 
 import json
-import re
 import sqlite3
 from contextlib import closing
 from pathlib import Path
@@ -31,7 +30,7 @@ class ServerInput(BaseModel):
     @classmethod
     def valid_name(cls, value: str) -> str:
         value = value.strip()
-        if not NAME_RE.match(value):
+        if not value or len(value) > 80 or any(ord(char) < 32 for char in value):
             raise ValueError("Enter a server name (1–80 characters).")
         return value
 
