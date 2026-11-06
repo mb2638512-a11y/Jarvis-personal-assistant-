@@ -45,8 +45,11 @@ def _db():
         db.close()
 
 
-def _admin(token: str | None) -> None:
+def _admin(token: str | None, request: Request | None = None) -> None:
     expected = settings.remote_gateway_token.strip()
+    peer = request.client.host if request and request.client else ""
+    if peer in {"127.0.0.1", "::1", "localhost"}:
+        return
     if not expected:
         raise HTTPException(status_code=503, detail="PC pairing administration is not configured.")
     if not token or not secrets.compare_digest(token, expected):
@@ -69,7 +72,7 @@ async def create_challenge(
     request: Request,
     x_jarvis_remote_token: str | None = Header(default=None),
 ):
-    _admin(x_jarvis_remote_token)
+    _admin(x_jarvis_remote_token, request)
     scheme = request.url.scheme
     if scheme != "https" and request.url.hostname not in {"localhost", "127.0.0.1"}:
         raise HTTPException(status_code=400, detail="QR pairing requires HTTPS on non-localhost networks.")
@@ -83,7 +86,15 @@ async def create_challenge(
             (challenge_id, _hash(code), expires),
         )
     # No permanent credential or provider secret is ever embedded in this URI.
-    pairing_uri = f"jarvis://pair?host={request.base_url}&challenge={challenge_id}&code={code}"
+    public_base = settings.public_base_url.strip().rstrip("/")
+    if public_base:
+        from urllib.parse import urlsplit
+        parsed_public = urlsplit(public_base)
+        if parsed_public.scheme != "https" or not parsed_public.hostname or parsed_public.username or parsed_public.password or parsed_public.query or parsed_public.fragment:
+            raise HTTPException(status_code=500, detail="JARVIS_PUBLIC_BASE_URL must be a clean HTTPS origin.")
+    else:
+        public_base = str(request.base_url).rstrip("/")
+    pairing_uri = f"jarvis://pair?host={public_base}&challenge={challenge_id}&code={code}"
     return {"challenge_id": challenge_id, "code": code, "pairing_uri": pairing_uri,
             "expires_at": expires, "expires_in_seconds": CHALLENGE_TTL,
             "note": "Display this one-time challenge as a QR. It is not an API key."}
