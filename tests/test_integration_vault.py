@@ -4,14 +4,14 @@ from fastapi.testclient import TestClient
 from jarvis_api import integration_vault
 from jarvis_api.config import settings
 from jarvis_api.main import app
-from jarvis_api.provider_vault import active_provider
 
 client = TestClient(app, base_url="https://testserver")
 
 
 def test_postiz_and_artemis_secrets_are_encrypted_and_never_returned(tmp_path, monkeypatch):
     monkeypatch.setattr(integration_vault, "DB_PATH", tmp_path / "integration.sqlite3")
-    monkeypatch.setattr(integration_vault, "_fernet", lambda: Fernet(Fernet.generate_key()))
+    key = Fernet.generate_key()
+    monkeypatch.setattr(integration_vault, "_fernet", lambda: Fernet(key))
     monkeypatch.setattr(settings, "remote_gateway_token", "integration-admin-token")
 
     postiz_secret = "private-postiz-api-key"
