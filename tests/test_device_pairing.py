@@ -1,9 +1,9 @@
 from fastapi.testclient import TestClient
 
 from jarvis_api import device_pairing as pairing
+from jarvis_api import remote_control as remote
 from jarvis_api.config import settings
 from jarvis_api.main import app
-import jarvis_api.remote_control as remote
 
 client = TestClient(app, base_url="https://testserver")
 TOKEN = "pairing-test-admin-token"
