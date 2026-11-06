@@ -71,7 +71,18 @@ jobs:
         with:
           channel: stable
       - name: Generate Windows platform scaffold
-        run: flutter create --platforms=windows --project-name jarvis_personal_assistant .
+        shell: pwsh
+        run: |
+          $agent = $null
+          if (Test-Path "windows/jarvis_device_agent.py") {
+            $agent = Join-Path $env:RUNNER_TEMP "jarvis_device_agent.py"
+            Copy-Item "windows/jarvis_device_agent.py" $agent -Force
+          }
+          if (Test-Path "windows") { Remove-Item "windows" -Recurse -Force }
+          flutter create --platforms=windows --project-name jarvis_personal_assistant .
+          if ($agent -and (Test-Path $agent)) {
+            Copy-Item $agent "windows/jarvis_device_agent.py" -Force
+          }
       - name: Resolve Flutter dependencies
         run: flutter pub get
       - name: Analyze Dart source
