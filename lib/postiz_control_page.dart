@@ -15,6 +15,7 @@ class PostizControlPage extends StatefulWidget {
 class _PostizControlPageState extends State<PostizControlPage> {
   final _content = TextEditingController();
   final List<Map<String, dynamic>> _channels = [];
+  final List<Map<String, dynamic>> _posts = [];
   String? _selectedChannel;
   String _mode = 'draft';
   DateTime _scheduledAt = DateTime.now().add(const Duration(hours: 1));
@@ -79,9 +80,39 @@ class _PostizControlPageState extends State<PostizControlPage> {
           ? 'Postiz is reachable, but no connected social channels were returned.'
           : 'Loaded ' + _channels.length.toString() + ' connected social channel(s).';
       });
+      await _loadPosts();
     } catch (error) {
       if (mounted) setState(() => _status = error.toString().replaceFirst('Exception: ', ''));
     } finally { if (mounted) setState(() => _busy = false); }
+  }
+
+  Future<void> _loadPosts() async {
+    final now = DateTime.now().toUtc();
+    final uri = _url('/api/postiz/posts', {
+      'startDate': now.subtract(const Duration(days: 1)).toIso8601String(),
+      'endDate': now.add(const Duration(days: 30)).toIso8601String(),
+    });
+    if (uri == null) return;
+    try {
+      final response = await http.get(uri, headers: await _headers()).timeout(const Duration(seconds: 25));
+      if (response.statusCode < 200 || response.statusCode >= 300) return;
+      final body = jsonDecode(response.body);
+      final posts = _unwrapList(body).whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList();
+      if (mounted) setState(() { _posts..clear()..addAll(posts); });
+    } catch (_) {}
+  }
+
+  String _postContent(Map<String, dynamic> item) {
+    final value = item['content'] ?? item['text'] ?? item['caption'] ?? item['message'];
+    if (value is String) return value;
+    if (item['posts'] is List && (item['posts'] as List).isNotEmpty) {
+      final first = (item['posts'] as List).first;
+      if (first is Map && first['value'] is List && (first['value'] as List).isNotEmpty) {
+        final nested = (first['value'] as List).first;
+        if (nested is Map && nested['content'] is String) return nested['content'] as String;
+      }
+    }
+    return 'Scheduled social post';
   }
 
   Future<void> _pickSchedule() async {
@@ -138,6 +169,7 @@ class _PostizControlPageState extends State<PostizControlPage> {
         _content.clear();
         _confirmPublish = false;
       });
+      await _loadPosts();
     } catch (error) {
       if (mounted) setState(() => _status = error.toString().replaceFirst('Exception: ', ''));
     } finally { if (mounted) setState(() => _busy = false); }
@@ -177,6 +209,22 @@ class _PostizControlPageState extends State<PostizControlPage> {
               )).toList(),
               onChanged: _busy ? null : (value) => setState(() => _selectedChannel = value),
             ),
+          const SizedBox(height: 18),
+          Row(children: [
+            const Expanded(child: Text('UPCOMING POSTS', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1))),
+            IconButton(onPressed: _busy ? null : _loadPosts, icon: const Icon(Icons.refresh), tooltip: 'Refresh scheduled posts'),
+          ]),
+          if (_posts.isEmpty)
+            const Text('No upcoming posts returned by Postiz.', style: TextStyle(color: Color(0xff8295aa)))
+          else
+            ..._posts.take(8).map((post) => Card(
+              child: ListTile(
+                leading: const Icon(Icons.schedule),
+                title: Text(_postContent(post), maxLines: 2, overflow: TextOverflow.ellipsis),
+                subtitle: Text((post['status'] ?? post['date'] ?? post['publishedAt'] ?? 'Postiz post').toString()),
+              ),
+            )),
+          const SizedBox(height: 14),
           const SizedBox(height: 14),
           TextField(controller: _content, minLines: 4, maxLines: 9, decoration: const InputDecoration(labelText: 'Post content', hintText: 'Write your social post…')),
           const SizedBox(height: 14),
