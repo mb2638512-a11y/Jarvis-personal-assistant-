@@ -882,8 +882,11 @@ class _ChatPageState extends State<ChatPage> {
           ]),
         ]),
         actions: [
-          IconButton(tooltip: 'Check connection', onPressed: checking ? null : checkHealth,
-            icon: checking ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.sync_rounded)),
+          // Keep the phone AppBar compact; the setup/status panel already
+          // provides a connection check on narrow layouts.
+          if (desktop || width >= 420)
+            IconButton(tooltip: 'Check connection', onPressed: checking ? null : checkHealth,
+              icon: checking ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.sync_rounded)),
           if (!desktop) PopupMenuButton<String>(
             tooltip: 'More tools',
             onSelected: (value) {
