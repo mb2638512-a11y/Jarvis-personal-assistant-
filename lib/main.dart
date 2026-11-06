@@ -651,8 +651,13 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
 
+    var normalized = result.trim();
+    while (normalized.endsWith('/')) {
+      normalized = normalized.substring(0, normalized.length - 1);
+    }
     setState(() {
-      baseUrl = result.replaceFirst(RegExp(r'/+
+      baseUrl = normalized;
+      status = 'Connection not checked';
       backendOnline = false;
     });
     await const FlutterSecureStorage().write(key: 'jarvis.shared.backend', value: baseUrl);
