@@ -7,6 +7,7 @@ user authentication/authorization is implemented.
 from __future__ import annotations
 
 import re
+import secrets
 from typing import Any, Literal
 
 import httpx
@@ -43,7 +44,7 @@ def _require_gateway_token(
     x_jarvis_device_token: str | None = Header(default=None),
 ) -> None:
     expected = settings.postiz_gateway_token.strip()
-    if expected and x_jarvis_postiz_token and x_jarvis_postiz_token == expected:
+    if expected and x_jarvis_postiz_token and secrets.compare_digest(x_jarvis_postiz_token, expected):
         return
     if x_jarvis_remote_token or x_jarvis_device_token:
         _remote_auth(x_jarvis_remote_token, x_jarvis_device_token)
