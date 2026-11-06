@@ -15,6 +15,7 @@ class WindowsPairingPage extends StatefulWidget {
 class _WindowsPairingPageState extends State<WindowsPairingPage> {
   String? _qr;
   String _code = '';
+  final List<Map<String, dynamic>> _devices = [];
   String _status = 'Generate a one-time QR code for your Android phone.';
   DateTime? _expiresAt;
   bool _busy = false;
@@ -80,6 +81,54 @@ class _WindowsPairingPageState extends State<WindowsPairingPage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadDevices();
+  }
+
+  Future<void> _loadDevices() async {
+    final base = Uri.tryParse(widget.backendUrl.trim());
+    if (base == null || !{'localhost', '127.0.0.1'}.contains(base.host)) return;
+    final uri = base.replace(path: '/api/pairing/devices', query: null, fragment: null);
+    try {
+      final response = await http.get(uri).timeout(const Duration(seconds: 8));
+      final body = jsonDecode(response.body);
+      if (response.statusCode == 200 && body is Map && body['devices'] is List && mounted) {
+        setState(() {
+          _devices
+            ..clear()
+            ..addAll((body['devices'] as List).whereType<Map>().map((d) => Map<String, dynamic>.from(d)));
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _revoke(String id, String label) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Revoke paired device?'),
+        content: Text('This will disconnect $label from this Jarvis PC.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Revoke')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final base = Uri.tryParse(widget.backendUrl.trim());
+    if (base == null) return;
+    final uri = base.replace(path: '/api/pairing/devices/$id', query: null, fragment: null);
+    try {
+      final response = await http.delete(uri).timeout(const Duration(seconds: 10));
+      if (response.statusCode < 200 || response.statusCode >= 300) throw Exception('HTTP ${response.statusCode}');
+      await _loadDevices();
+    } catch (error) {
+      if (mounted) setState(() => _status = 'Could not revoke device: $error');
+    }
+  }
+
+  @override
   void dispose() { _timer?.cancel(); super.dispose(); }
 
   @override
@@ -115,6 +164,30 @@ class _WindowsPairingPageState extends State<WindowsPairingPage> {
                 icon: const Icon(Icons.qr_code_2),
                 label: Text(_qr == null ? 'Generate pairing QR' : 'Generate a new QR'),
               ),
+              const SizedBox(height: 18),
+              Row(children: [
+                const Expanded(child: Text('PAIRED DEVICES', style: TextStyle(color: Color(0xff80e2fb), fontWeight: FontWeight.w800, letterSpacing: 1.2))),
+                IconButton(onPressed: _loadDevices, icon: const Icon(Icons.refresh), tooltip: 'Refresh devices'),
+              ]),
+              if (_devices.isEmpty)
+                const Text('No Android devices paired yet.', style: TextStyle(color: Color(0xffa6b8ca)))
+              else
+                ..._devices.map((device) {
+                  final id = device['id']?.toString() ?? '';
+                  final label = device['label']?.toString() ?? 'Device';
+                  final revoked = device['revoked'] == 1 || device['revoked'] == true;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(device['platform'] == 'android' ? Icons.phone_android : Icons.devices),
+                    title: Text(label),
+                    subtitle: Text('${device['platform']} · ${revoked ? 'revoked' : 'active'}'),
+                    trailing: revoked ? null : IconButton(
+                      onPressed: () => _revoke(id, label),
+                      icon: const Icon(Icons.link_off),
+                      tooltip: 'Revoke device',
+                    ),
+                  );
+                }),
               const SizedBox(height: 8),
               const Text('The QR contains a short-lived one-time challenge, never your AI API keys.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Color(0xff8295aa))),
             ],
