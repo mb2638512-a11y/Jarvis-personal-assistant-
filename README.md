@@ -20,7 +20,7 @@ The earlier visual prototype/source bundle is not present on the current clean b
 - Unit tests for configuration, safe failure behavior, mocked Postiz API requests, and the ARTEMIS bridge.
 - GitHub Actions CI workflow for the Python test suite.
 
-## Quick start (backend)
+## Windows PC host (recommended first deployment)\n\nThe main Windows PC can run Jarvis locally as the first control center. Run `scripts/install-windows-host.ps1`, configure `.env`, then start `scripts/start-windows-host.ps1` and `scripts/start-windows-agent.ps1` in separate PowerShell windows. The API binds to localhost only. For other devices, use a private HTTPS network such as Tailscale Serve; see [Windows PC Host Setup](docs/WINDOWS_PC_HOST_SETUP.md).\n\nThe current multi-device broker still uses a shared gateway token; one-time pairing links, per-device credentials, and revocation controls are not implemented yet. Do not share the token with untrusted devices.\n\n## Quick start (backend)
 Python 3.11+
 ```bash
 python -m venv .venv
