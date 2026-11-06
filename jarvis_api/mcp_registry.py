@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import uuid
 from contextlib import closing
 from pathlib import Path
 from typing import Any
@@ -130,7 +131,6 @@ async def list_servers() -> dict[str, Any]:
 
 @router.post("/servers")
 async def add_server(body: ServerInput) -> dict[str, Any]:
-    import uuid
     try:
         tools = await discover_tools(body.url)
         status, error = "connected", ""
