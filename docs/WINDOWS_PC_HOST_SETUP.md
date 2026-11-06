@@ -65,7 +65,7 @@ The agent should register as `main-windows-pc` and heartbeat every few seconds. 
 
 ## 5. Connect other devices privately
 
-Recommended initial networking: Tailscale. Install and sign in on the host PC and each additional PC. On the host, keep Jarvis bound to localhost and use Tailscale Serve to publish the local API only inside your tailnet over HTTPS. Follow the current Tailscale Serve setup for forwarding the host's HTTPS tailnet name to `http://127.0.0.1:8000`.
+Recommended initial networking: Tailscale. Install and sign in on the host PC and each additional PC. On the host, keep Jarvis bound to localhost and use Tailscale Serve to publish the local API only inside your tailnet over HTTPS. On the host, run this from PowerShell (it may prompt you to enable HTTPS certificates in your tailnet):\n\n```powershell\ntailscale serve --bg 8000\ntailscale serve status\n```\n\nThe status output provides the private HTTPS tailnet URL. Set that URL as `JARVIS_BASE_URL` on remote Windows agents. Tailscale Serve forwards HTTPS traffic privately to the local service; keep the backend bound to `127.0.0.1`. See the [official Tailscale Serve CLI guide](https://tailscale.com/docs/reference/tailscale-cli/serve).
 
 On a second Windows PC:
 1. Clone the same Jarvis repository.
