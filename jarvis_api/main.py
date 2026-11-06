@@ -55,7 +55,7 @@ async def health() -> dict[str, str]:
 
 @app.get("/status")
 async def status() -> dict[str, object]:
-    configured = bool(settings.api_key.strip() and settings.model.strip())
+    configured = bool(active_provider() or (settings.api_key.strip() and settings.model.strip()))
     return {
         "service": "jarvis-api",
         "provider": "openai-compatible",
