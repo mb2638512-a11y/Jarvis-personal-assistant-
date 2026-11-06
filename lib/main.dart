@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'wellbeing_page.dart';
@@ -328,7 +329,7 @@ class _ChatPageState extends State<ChatPage> {
       try {
         final response = await http.get(
           uri,
-          headers: {'X-Jarvis-Remote-Token': token},
+          headers: {'X-Jarvis-Device-Token': token},
         ).timeout(const Duration(seconds: 8));
         if (response.statusCode < 200 || response.statusCode >= 300) {
           continue;
@@ -364,7 +365,7 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> remoteControl() async {
     final messenger = ScaffoldMessenger.of(context);
-    final tokenController = TextEditingController();
+    final tokenController = TextEditingController(text: await const FlutterSecureStorage().read(key: 'jarvis.device.token') ?? '');
     final valueController = TextEditingController();
     String action = 'get_status';
     String targetPlatform = 'windows';
@@ -387,7 +388,7 @@ class _ChatPageState extends State<ChatPage> {
                     controller: tokenController,
                     obscureText: true,
                     autocorrect: false,
-                    decoration: const InputDecoration(labelText: 'Private remote gateway token'),
+                    decoration: const InputDecoration(labelText: 'Paired device credential (loaded after QR pairing)'),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
@@ -468,7 +469,7 @@ class _ChatPageState extends State<ChatPage> {
                     uri,
                     headers: {
                       'Content-Type': 'application/json',
-                      'X-Jarvis-Remote-Token': token,
+                      'X-Jarvis-Device-Token': token,
                     },
                     body: jsonEncode({
                       'target_platform': targetPlatform,
