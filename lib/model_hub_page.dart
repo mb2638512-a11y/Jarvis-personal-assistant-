@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 class ModelHubPage extends StatefulWidget {
@@ -39,7 +40,13 @@ class _ModelHubPageState extends State<ModelHubPage> {
     try {
       final uri = _uri(widget.readOnly ? '/api/models/providers/catalog' : '/api/models/providers');
       if (uri == null) throw Exception('Set the shared backend URL. HTTPS is required off localhost.');
-      final response = await http.get(uri).timeout(const Duration(seconds: 20));
+      final headers = <String, String>{};
+      if (widget.readOnly) {
+        final token = await const FlutterSecureStorage().read(key: 'jarvis.device.token');
+        if (token == null || token.isEmpty) throw Exception('Pair this phone with the Windows Jarvis PC first.');
+        headers['X-Jarvis-Device-Token'] = token;
+      }
+      final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20));
       final body = jsonDecode(response.body);
       if (response.statusCode < 200 || response.statusCode >= 300 || body is! Map) {
         throw Exception(body is Map ? (body['detail'] ?? 'Model catalogue request failed.') : 'Invalid model catalogue response.');
