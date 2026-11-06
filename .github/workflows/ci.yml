@@ -11,6 +11,7 @@ on:
       - backup/**
     paths:
       - "jarvis_api/**"
+      - "windows/**"
       - "tests/**"
       - "pyproject.toml"
       - ".gitmodules"
@@ -20,6 +21,7 @@ on:
   pull_request:
     paths:
       - "jarvis_api/**"
+      - "windows/**"
       - "tests/**"
       - "pyproject.toml"
       - ".gitmodules"
