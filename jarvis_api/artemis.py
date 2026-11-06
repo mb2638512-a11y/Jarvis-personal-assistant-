@@ -7,7 +7,10 @@ connected when the upstream daemon is absent.
 from __future__ import annotations
 
 import re
+import subprocess
+import sys
 import uuid
+from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlsplit
 
@@ -115,6 +118,37 @@ async def artemis_status(
             "configured": True, "live_connected": False, "ready": False,
             "error": exc.detail, "note": "ARTEMIS is configured but the upstream connection is not verified.",
         }
+
+
+@router.post("/host/start")
+async def start_local_artemis_host(request: Request) -> dict[str, Any]:
+    peer = request.client.host if request.client else ""
+    if peer not in {"127.0.0.1", "::1", "localhost"}:
+        raise HTTPException(status_code=403, detail="ARTEMIS host startup is available only from the Windows PC.")
+    if sys.platform != "win32":
+        raise HTTPException(status_code=501, detail="Automatic ARTEMIS startup is currently supported on Windows only.")
+    root = Path(__file__).resolve().parent.parent
+    script = root / "scripts" / "start-artemis.ps1"
+    if not script.is_file():
+        raise HTTPException(status_code=503, detail="Jarvis ARTEMIS startup script is missing.")
+    data_dir = root / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    log_path = data_dir / "artemis-start.log"
+    log_handle = log_path.open("ab")
+    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    try:
+        process = subprocess.Popen(
+            ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)],
+            cwd=str(root),
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+            creationflags=flags,
+        )
+    except OSError as exc:
+        log_handle.close()
+        raise HTTPException(status_code=500, detail="Could not launch the ARTEMIS setup process.") from exc
+    log_handle.close()
+    return {"started": True, "pid": process.pid, "log": "data/artemis-start.log", "note": "First startup can take several minutes while dependencies and Android tools are installed."}
 
 
 @router.post("/tasks")
