@@ -60,6 +60,7 @@ jobs:
           }
           if (Test-Path "web") { Copy-Item "web" "$root/host/web" -Recurse -Force }
           Copy-Item "windows-installer/Install-Jarvis.ps1" "$root/Install-Jarvis.ps1" -Force
+          Copy-Item "windows-installer/Install-Jarvis.bat" "$root/Install-Jarvis.bat" -Force
           Copy-Item "windows-installer/Start-Jarvis.ps1" "$root/Start-Jarvis.ps1" -Force
           if (!(Test-Path "$root/host/scripts/install-windows-host.ps1")) {
             throw "Windows host installer scripts are missing from the bundle."
