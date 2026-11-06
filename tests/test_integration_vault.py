@@ -24,10 +24,11 @@ def test_postiz_and_artemis_secrets_are_encrypted_and_never_returned(tmp_path, m
     assert postiz_secret not in postiz.text
 
     artemis_secret = "private-artemis-gateway-token"
+    google_secret = "private-google-gemini-key"
     artemis = client.put(
         "/api/integration-config/artemis",
         headers={"X-Jarvis-Remote-Token": "integration-admin-token"},
-        json={"base_url": "http://127.0.0.1:8765", "gateway_token": artemis_secret},
+        json={"base_url": "http://127.0.0.1:8765", "gateway_token": artemis_secret, "google_api_key": google_secret},
     )
     assert artemis.status_code == 200
     assert artemis_secret not in artemis.text
@@ -41,9 +42,11 @@ def test_postiz_and_artemis_secrets_are_encrypted_and_never_returned(tmp_path, m
     assert listed.json()["artemis"]["configured"] is True
     assert postiz_secret not in listed.text
     assert artemis_secret not in listed.text
+    assert google_secret not in listed.text
 
     assert integration_vault.get_integration_config("postiz")["api_key"] == postiz_secret
     assert integration_vault.get_integration_config("artemis")["gateway_token"] == artemis_secret
+    assert integration_vault.get_integration_config("artemis")["google_api_key"] == google_secret
 
 
 def test_integration_config_rejects_plain_http_public_host(monkeypatch):
