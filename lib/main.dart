@@ -12,6 +12,7 @@ import 'model_hub_page.dart';
 import 'llm_client.dart';
 import 'device_pairing_page.dart';
 import 'windows_pairing_page.dart';
+import 'artemis_control_page.dart';
 import 'tools_page.dart';
 
 void main() => runApp(const JarvisApp());
@@ -749,6 +750,7 @@ class _ChatPageState extends State<ChatPage> {
       _launchTile(icon: Icons.desktop_windows_rounded, title: 'Control your PC', subtitle: 'Run approved remote actions', onTap: remoteControl, compact: !wide),
       _launchTile(icon: Icons.qr_code_scanner_rounded, title: 'Pair with PC', subtitle: 'Scan the Windows Jarvis QR code', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DevicePairingPage())), compact: !wide),
       if (defaultTargetPlatform == TargetPlatform.windows) _launchTile(icon: Icons.qr_code_2_rounded, title: 'Pair phone', subtitle: 'Display a secure QR code for Android', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WindowsPairingPage(backendUrl: baseUrl))), compact: !wide),
+      if (defaultTargetPlatform == TargetPlatform.android) _launchTile(icon: Icons.smartphone_rounded, title: 'ARTEMIS automation', subtitle: 'Control Android apps through the PC engine', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ArtemisControlPage(backendUrl: baseUrl))), compact: !wide),
       _launchTile(icon: Icons.phone_android_rounded, title: 'This phone', subtitle: 'Open settings and websites', onTap: phoneActions, compact: !wide),
       _launchTile(icon: Icons.hub_rounded, title: 'Connect apps', subtitle: 'Secure social account links', onTap: openSocialHub, compact: !wide),
       _launchTile(icon: Icons.account_tree_rounded, title: 'AI models', subtitle: 'Providers, routing and keys', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ModelHubPage(backendUrl: baseUrl, readOnly: defaultTargetPlatform == TargetPlatform.android))), compact: !wide),
