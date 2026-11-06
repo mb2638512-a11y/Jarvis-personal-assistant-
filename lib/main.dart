@@ -882,13 +882,13 @@ class _ChatPageState extends State<ChatPage> {
           ]),
         ]),
         actions: [
-          if (!desktop) IconButton(tooltip: 'Remote PC control', onPressed: remoteControl, icon: const Icon(Icons.desktop_windows_outlined)),
-          if (!desktop) IconButton(tooltip: 'Phone actions', onPressed: phoneActions, icon: const Icon(Icons.phone_android_outlined)),
           IconButton(tooltip: 'Check connection', onPressed: checking ? null : checkHealth,
             icon: checking ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.sync_rounded)),
           if (!desktop) PopupMenuButton<String>(
             tooltip: 'More tools',
             onSelected: (value) {
+              if (value == 'remote') remoteControl();
+              if (value == 'phone') phoneActions();
               if (value == 'social') openSocialHub();
               if (value == 'wellbeing') Navigator.of(context).push(MaterialPageRoute(builder: (_) => WellbeingPage(backendUrl: baseUrl)));
               if (value == 'health') Navigator.of(context).push(MaterialPageRoute(builder: (_) => DeviceHealthPage(backendUrl: baseUrl)));
@@ -896,6 +896,8 @@ class _ChatPageState extends State<ChatPage> {
               if (value == 'settings') settings();
             },
             itemBuilder: (_) => const [
+              PopupMenuItem(value: 'remote', child: Text('Remote PC control')),
+              PopupMenuItem(value: 'phone', child: Text('This phone actions')),
               PopupMenuItem(value: 'social', child: Text('Connect apps')),
               PopupMenuItem(value: 'wellbeing', child: Text('Wellbeing dashboard')),
               PopupMenuItem(value: 'health', child: Text('Device health')),
