@@ -416,7 +416,6 @@ class _ChatPageState extends State<ChatPage> {
                     decoration: const InputDecoration(labelText: 'Target device'),
                     items: const [
                       DropdownMenuItem(value: 'windows', child: Text('Windows PC')),
-                      DropdownMenuItem(value: 'android', child: Text('Android device via authorized ADB bridge')),
                     ],
                     onChanged: (value) => setDialogState(() => targetPlatform = value ?? 'windows'),
                   ),
