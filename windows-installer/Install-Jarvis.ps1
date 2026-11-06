@@ -54,10 +54,4 @@ $startMenuShortcut.IconLocation = Join-Path $AppRoot "jarvis_personal_assistant.
 $startMenuShortcut.Save()
 
 Write-Host "Jarvis installed at $InstallRoot" -ForegroundColor Green
-$envPath = Join-Path $HostRoot ".env"
-$envText = Get-Content $envPath -Raw
-if ($envText -notmatch "(?m)^JARVIS_API_KEY=.+$" -or $envText -match "(?m)^JARVIS_MODEL=\s*$") {
-  Start-Process notepad.exe -ArgumentList $envPath -Wait
-}
-$launcherArgs = ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $launcher)
-Start-Process powershell.exe -ArgumentList $launcherArgs -WorkingDirectory $InstallRoot
+Write-Host "Next: open Jarvis and add your AI provider in the PC Model Control screen. API keys are encrypted in the PC vault." -ForegroundColor Cyan
