@@ -143,3 +143,17 @@ def test_analytics_routes_to_postiz(monkeypatch):
     )
     assert response.status_code == 200
     assert response.json()["views"] == 10
+
+
+def test_postiz_accepts_paired_or_pc_admin_auth(monkeypatch):
+    configure(monkeypatch)
+    monkeypatch.setattr(settings, "remote_gateway_token", "pc-admin-token")
+
+    async def fake_request(self, method, url, **kwargs):
+        request = httpx.Request(method, url)
+        return httpx.Response(200, request=request, json=[{"id": "channel-1", "name": "Test"}])
+
+    monkeypatch.setattr(httpx.AsyncClient, "request", fake_request)
+    response = client.get("/api/postiz/channels", headers={"X-Jarvis-Remote-Token": "pc-admin-token"})
+    assert response.status_code == 200
+    assert response.json()[0]["id"] == "channel-1"
