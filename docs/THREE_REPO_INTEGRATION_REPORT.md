@@ -1,38 +1,40 @@
 # Three-repository integration report
 
-Date: 2026-10-27
+Updated: 2026-11-06
 
-## Source repositories pinned
+## Upstream source snapshots
 
-| Project | Upstream | Pinned commit |
+The following source trees are tracked inside Jarvis under `backend/vendor/`. They are ordinary copied source snapshots, not Git submodules. Each retains its upstream license and attribution.
+
+| Project | Upstream | Jarvis runtime integration |
 |---|---|---|
-| Atticus Windows | https://github.com/FindlayHi/atticus-windows | `657cc26d9cac48ce6951958fc4b2b519787a0af6` |
-| ARTEMIS | https://github.com/google/artemis | `351ca8422f7b5b54e80a9c1ce03a222e02415b6b` |
-| Postiz | https://github.com/gitroomhq/postiz-app | `a5affe62c74e39c1e7ac960d50d8418b807d532c` |
+| Atticus Windows | https://github.com/FindlayHi/atticus-windows | `windows/jarvis_device_agent.py` imports the vendored Windows control primitives and executes typed, allow-listed actions through `/api/remote`. |
+| Google ARTEMIS | https://github.com/google/artemis | `jarvis_api/artemis.py` submits and retrieves tasks from a separately running, private ARTEMIS daemon. |
+| Postiz | https://github.com/gitroomhq/postiz-app | `jarvis_api/postiz.py` calls the Postiz Public API for channel, post, scheduling, upload, and analytics operations. |
 
-The repositories are included as Git submodules under `backend/vendor/`, with URLs in `.gitmodules`. They are pinned to fixed commits rather than tracking a moving branch.
+## What is now connected in code
 
-## Verification status
+- The Windows device agent registers and heartbeats against the Jarvis task broker, polls typed tasks, executes through Atticus `winctl.py`, and reports completion.
+- The ARTEMIS bridge validates Jarvis gateway authentication and explicit user confirmation, then forwards tasks to ARTEMIS `/api/run` and reads `/api/sessions/{id}`.
+- The Postiz adapter remains server-side; its API key and action token are not sent to clients.
+- `GET /api/integrations/status` reports source/configuration/Windows-agent readiness without treating a copied source tree as a live connection.
+- `docs/THREE_REPO_RUNTIME_INTEGRATION.md` contains setup and security boundaries.
 
-- **GitHub source metadata:** verified; all three upstream commit refs resolved successfully on 2026-10-27.
-- **Submodule wiring:** added to the integration branch. Confirm by cloning with `--recurse-submodules` or running `git submodule update --init --recursive`.
-- **Jarvis Postiz API adapter:** implementation exists at `jarvis_api/postiz.py`; API tests are present in `tests/test_postiz.py`. Live Postiz posting still requires a real Postiz API key and configured workspace.
-- **Atticus Windows:** upstream source is pinned; no Windows build/test result is claimed for this Jarvis branch.
-- **ARTEMIS:** upstream source is pinned; no claim is made that ARTEMIS is runtime-integrated or that its upstream test suite passed.
-- **End-to-end platform verification:** pending. A GitHub tree/submodule reference does not execute code. CI results and actual Windows/Android builds must be checked separately.
+## What still requires the user's infrastructure
 
-## Required verification commands
+- Run `windows/jarvis_device_agent.py` on the Windows PC and set the Jarvis backend URL plus remote gateway token.
+- Run the ARTEMIS host separately with Python 3.12+, its dependencies, ADB/platform tools, an attached Android phone/emulator, and its own model-provider credentials. Keep the daemon behind a private VPN/tunnel or authenticated HTTPS reverse proxy; do not expose its admin API publicly.
+- Configure Postiz workspace/API credentials and verify a protected channels request against a non-production workspace.
+- Complete first-party Jarvis user/device authentication and per-user authorization before exposing remote actions or social publishing to the public internet.
 
-```bash
-git submodule update --init --recursive
-python -m pip install -e ".[dev]"
-pytest -q
-```
+## Verification
 
-For the Windows client, follow the upstream Atticus Windows README and run its documented self-tests on Windows. For Postiz, run mocked adapter tests first, then test against a non-production Postiz workspace. Do not test destructive actions against production accounts.
+CI is configured to run on the `android` branch and compile the new device-agent source before running the Jarvis Python tests. A passing mocked test suite proves the adapter contract only; it does not prove that a Windows PC, ARTEMIS Android device, or Postiz account is online.
 
 ## Security and licensing
 
-- Keep Postiz credentials server-side; never package secrets in desktop/mobile binaries.
-- Review each upstream's license, dependencies, permissions, and security advisories before distributing a combined product. Postiz is AGPL-3.0; consult legal advice before incorporating or modifying its source in a distributed proprietary product.
-- Treat the three repositories as separate components until explicit adapters and contract tests demonstrate runtime interoperability.
+- The Windows agent never accepts arbitrary shell or PowerShell commands.
+- Typing and key presses require explicit user confirmation in the broker request.
+- Device agents require HTTPS except for localhost development.
+- Never package provider, Postiz, ARTEMIS, or remote gateway secrets into public client binaries.
+- Preserve upstream license files. Postiz is AGPL-3.0; review obligations before redistributing a combined product.
