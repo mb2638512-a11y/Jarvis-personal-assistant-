@@ -19,7 +19,6 @@ from pydantic import BaseModel, Field, field_validator
 
 router = APIRouter(prefix="/api/mcp", tags=["MCP tools"])
 DB_PATH = Path(__file__).resolve().parent.parent / "data" / "mcp_servers.sqlite3"
-NAME_RE = re.compile(r"^[^\\x00-\\x1f]{1,80}$")
 
 
 class ServerInput(BaseModel):
