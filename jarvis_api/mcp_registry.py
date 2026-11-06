@@ -107,7 +107,7 @@ async def discover_tools(url: str) -> list[dict[str, Any]]:
             raise ValueError(str(payload["error"].get("message", "Tool discovery failed")))
         tools = payload.get("result", {}).get("tools", [])
         if not isinstance(tools, list):
-            raise ValueError("MCP tools/list returned an invalid tools collection.")
+            raise TypeError("MCP tools/list returned an invalid tools collection.")
         return [{
             "name": str(tool.get("name", ""))[:120],
             "description": str(tool.get("description", ""))[:500],
