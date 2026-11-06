@@ -65,7 +65,7 @@ def get_integration_config(name: str) -> dict[str, str] | None:
         raw = _fernet().decrypt(row["encrypted_payload"]).decode("utf-8")
         data = json.loads(raw)
         return data if isinstance(data, dict) else None
-    except (InvalidToken, ValueError, UnicodeDecodeError, json.JSONDecodeError, sqlite3.Error):
+    except (InvalidToken, ValueError, sqlite3.Error):
         return None
 
 
