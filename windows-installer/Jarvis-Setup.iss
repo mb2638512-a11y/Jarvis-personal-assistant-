@@ -16,7 +16,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 Uninstallable=no
-OutputDir=..\dist
+OutputDir={#RepoRoot}\dist
 OutputBaseFilename=Jarvis-Setup
 Compression=lzma2
 SolidCompression=yes
@@ -25,7 +25,7 @@ CloseApplications=no
 
 [Files]
 ; Payload is staged by the workflow at repository-root dist/Jarvis-Windows.
-Source: "..\dist\Jarvis-Windows\*"; DestDir: "{tmp}\JarvisBundle"; Flags: recursesubdirs createallsubdirs deleteafterinstall
+Source: "{#RepoRoot}\dist\Jarvis-Windows\*"; DestDir: "{tmp}\JarvisBundle"; Flags: recursesubdirs createallsubdirs deleteafterinstall
 
 [Run]
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\JarvisBundle\Install-Jarvis.ps1"""; StatusMsg: "Installing Jarvis and configuring the Windows PC..."; Flags: runhidden waituntilterminated
