@@ -87,7 +87,7 @@ class SecurityEvent(BaseModel):
 def ingest_usage(event: UsageEvent, x_jarvis_gateway_token: str | None = Header(default=None)) -> dict:
     _authorize(x_jarvis_gateway_token)
     recorded = _now()
-    observed = (event.observed_at or datetime.now(timezone.utc)).isoformat()
+    observed = (event.observed_at or datetime.now(UTC)).isoformat()
     with _connect() as db:
         db.execute(
             """INSERT INTO usage_events
@@ -229,7 +229,7 @@ def report_device_metrics(body: DeviceMetrics, x_jarvis_gateway_token: str | Non
     _authorize(x_jarvis_gateway_token)
     import json
     now = _now()
-    observed = (body.observed_at or datetime.now(timezone.utc)).isoformat()
+    observed = (body.observed_at or datetime.now(UTC)).isoformat()
     with _connect() as db:
         _ensure_device_tables(db)
         db.execute("INSERT INTO device_metrics(device_id,platform,snapshot_json,observed_at,received_at) VALUES(?,?,?,?,?)",
@@ -253,7 +253,7 @@ def report_device_security(body: DeviceSecurityPosture, x_jarvis_gateway_token: 
     _authorize(x_jarvis_gateway_token)
     import json
     now = _now()
-    observed = (body.observed_at or datetime.now(timezone.utc)).isoformat()
+    observed = (body.observed_at or datetime.now(UTC)).isoformat()
     with _connect() as db:
         _ensure_device_tables(db)
         db.execute("INSERT INTO device_security(device_id,platform,snapshot_json,observed_at,received_at) VALUES(?,?,?,?,?)",
