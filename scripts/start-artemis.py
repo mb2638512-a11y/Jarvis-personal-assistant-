@@ -39,6 +39,19 @@ def main() -> int:
         print("ARTEMIS upstream startup script is missing from the vendored source.")
         return 2
 
+    lock_path = ROOT / "data" / "artemis-start.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    if lock_path.exists():
+        if lock_path.stat().st_mtime > __import__("time").time() - 1200:
+            print("ARTEMIS setup is already running in the background.")
+            return 0
+        lock_path.unlink(missing_ok=True)
+    try:
+        lock_path.write_text(str(os.getpid()), encoding="utf-8")
+    except FileExistsError:
+        print("ARTEMIS setup is already running.")
+        return 0
+
     env = os.environ.copy()
     env["GOOGLE_API_KEY"] = google_key
     env["GEMINI_API_KEY"] = google_key
@@ -56,8 +69,11 @@ def main() -> int:
         "8765",
         "-NoOpen",
     ]
-    completed = subprocess.run(command, cwd=ARTEMIS_ROOT, env=env, check=False)
-    return completed.returncode
+    try:
+        completed = subprocess.run(command, cwd=ARTEMIS_ROOT, env=env, check=False)
+        return completed.returncode
+    finally:
+        lock_path.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
