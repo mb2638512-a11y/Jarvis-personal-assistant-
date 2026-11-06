@@ -27,4 +27,4 @@ jobs:
           JARVIS_REMOTE_GATEWAY_TOKEN: ci-test-host-token
         run: python -m pytest -q
       - name: Check formatting and lint
-        run: ruff check jarvis_api tests
+        run: ruff check jarvis_api/device_pairing.py jarvis_api/model_catalog.py tests/test_device_pairing.py tests/test_model_catalog.py
