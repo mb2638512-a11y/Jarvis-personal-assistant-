@@ -52,10 +52,11 @@ class _ArtemisControlPageState extends State<ArtemisControlPage> {
         throw Exception(body is Map ? (body['detail'] ?? 'ARTEMIS status unavailable.') : 'Invalid status response.');
       }
       final devices = body['devices'] is List ? (body['devices'] as List).length : 0;
+      final ready = body['ready'] == true;
       if (!mounted) return;
       setState(() {
         _status = body['live_connected'] == true
-          ? 'ARTEMIS host connected · $devices Android device(s) detected · ready: \${body['ready'] == true}'
+          ? 'ARTEMIS host connected · $devices Android device(s) detected · ready: $ready'
           : (body['note']?.toString() ?? 'ARTEMIS is not connected.');
         if (devices == 1 && body['devices'][0] is Map) {
           _device.text = (body['devices'][0]['serial'] ?? body['devices'][0]['device_serial'] ?? body['devices'][0]['id'] ?? '').toString();
@@ -123,7 +124,10 @@ class _ArtemisControlPageState extends State<ArtemisControlPage> {
       if ({'succeeded', 'success', 'completed', 'failed', 'error', 'cancelled', 'rejected'}.contains(status.toLowerCase())) {
         _poller?.cancel();
         final output = body['output'] ?? body['result'] ?? body['error'];
-        if (output != null && mounted) setState(() => _status = 'ARTEMIS $status: \${output.toString()}');
+        if (output != null && mounted) {
+          final outputText = output.toString();
+          setState(() => _status = 'ARTEMIS $status: $outputText');
+        }
       }
     } catch (_) {}
   }
