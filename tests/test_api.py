@@ -5,7 +5,12 @@ from fastapi.testclient import TestClient
 from jarvis_api.config import settings
 from jarvis_api.main import app
 
-client = TestClient(app)
+client = TestClient(app, headers={"X-Jarvis-Remote-Token": "api-test-token"})
+
+
+@pytest.fixture(autouse=True)
+def configure_chat_auth(monkeypatch):
+    monkeypatch.setattr(settings, "remote_gateway_token", "api-test-token")
 
 
 def test_health_is_process_health_only():
