@@ -3,7 +3,6 @@ name: Python CI
 on:
   push:
     branches: [main, feature/vendor-three-repos]
-  pull_request:
   workflow_dispatch:
 
 permissions:
