@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'wellbeing_page.dart';
 import 'device_health_page.dart';
-import 'llm_settings_page.dart';
+import 'model_hub_page.dart';
 import 'llm_client.dart';
 import 'device_pairing_page.dart';
 import 'windows_pairing_page.dart';
@@ -729,7 +729,7 @@ class _ChatPageState extends State<ChatPage> {
       if (defaultTargetPlatform == TargetPlatform.windows) _launchTile(icon: Icons.qr_code_2_rounded, title: 'Pair phone', subtitle: 'Display a secure QR code for Android', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WindowsPairingPage(backendUrl: baseUrl))), compact: !wide),
       _launchTile(icon: Icons.phone_android_rounded, title: 'This phone', subtitle: 'Open settings and websites', onTap: phoneActions, compact: !wide),
       _launchTile(icon: Icons.hub_rounded, title: 'Connect apps', subtitle: 'Secure social account links', onTap: openSocialHub, compact: !wide),
-      _launchTile(icon: Icons.account_tree_rounded, title: 'AI models', subtitle: 'Providers, routing and keys', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LlmSettingsPage())), compact: !wide),
+      _launchTile(icon: Icons.account_tree_rounded, title: 'AI models', subtitle: 'Providers, routing and keys', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ModelHubPage(backendUrl: baseUrl, readOnly: defaultTargetPlatform == TargetPlatform.android))), compact: !wide),
     ];
 
     final tools = <Widget>[
@@ -916,7 +916,7 @@ class _ChatPageState extends State<ChatPage> {
               PopupMenuItem(value: 'social', child: Text('Connect apps')),
               PopupMenuItem(value: 'wellbeing', child: Text('Wellbeing dashboard')),
               PopupMenuItem(value: 'health', child: Text('Device health')),
-              PopupMenuItem(value: 'models', child: Text('AI model settings')),
+              PopupMenuItem(value: 'models', child: Text('Shared AI models')),
               PopupMenuItem(value: 'tools', child: Text('Tools & Connectors')),
               PopupMenuItem(value: 'settings', child: Text('Backend settings')),
             ],
