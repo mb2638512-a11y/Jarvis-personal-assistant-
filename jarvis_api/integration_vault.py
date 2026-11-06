@@ -91,7 +91,7 @@ class PostizConfig(BaseModel):
 
 class ArtemisConfig(BaseModel):
     base_url: str = Field(min_length=8, max_length=500)
-    gateway_token: str = Field(min_length=16, max_length=4000)
+    gateway_token: str = Field(default="", max_length=4000)
     google_api_key: str = Field(default="", max_length=4000)
 
     @field_validator("base_url")
@@ -141,5 +141,8 @@ async def save_artemis_config(
     x_jarvis_remote_token: str | None = Header(default=None),
 ) -> dict[str, object]:
     _admin(request, x_jarvis_remote_token)
-    _save("artemis", {"base_url": body.base_url, "gateway_token": body.gateway_token, "google_api_key": body.google_api_key})
-    return {"saved": True, "service": "artemis", "credential_exposed": False, "base_url": body.base_url}
+    token = body.gateway_token.strip() or secrets.token_urlsafe(32)
+    if len(token) < 16:
+        raise HTTPException(status_code=422, detail="ARTEMIS gateway token must contain at least 16 characters.")
+    _save("artemis", {"base_url": body.base_url, "gateway_token": token, "google_api_key": body.google_api_key})
+    return {"saved": True, "service": "artemis", "gateway_token_generated": not bool(body.gateway_token.strip()), "credential_exposed": False, "base_url": body.base_url}
