@@ -47,7 +47,8 @@ def main() -> int:
             return 0
         lock_path.unlink(missing_ok=True)
     try:
-        lock_path.write_text(str(os.getpid()), encoding="utf-8")
+        with lock_path.open("x", encoding="utf-8") as lock:
+            lock.write(str(os.getpid()))
     except FileExistsError:
         print("ARTEMIS setup is already running.")
         return 0
