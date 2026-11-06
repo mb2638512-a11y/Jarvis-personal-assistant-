@@ -12,6 +12,7 @@ from jarvis_api.integrations import router as integrations_router
 from jarvis_api.mcp_registry import router as mcp_router
 from jarvis_api.postiz import router as postiz_router
 from jarvis_api.device_pairing import router as device_pairing_router
+from jarvis_api.model_catalog import router as model_catalog_router
 from jarvis_api.remote_control import router as remote_control_router
 from jarvis_api.social_oauth import router as social_oauth_router
 from jarvis_api.wellbeing import router as wellbeing_router
@@ -24,6 +25,7 @@ app.include_router(mcp_router)
 app.include_router(social_oauth_router)
 app.include_router(remote_control_router)
 app.include_router(device_pairing_router)
+app.include_router(model_catalog_router)
 app.include_router(wellbeing_router)
 
 
