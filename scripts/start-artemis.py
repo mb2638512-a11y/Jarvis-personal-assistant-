@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -42,7 +43,7 @@ def main() -> int:
     lock_path = ROOT / "data" / "artemis-start.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     if lock_path.exists():
-        if lock_path.stat().st_mtime > __import__("time").time() - 1200:
+        if lock_path.stat().st_mtime > time.time() - 1200:
             print("ARTEMIS setup is already running in the background.")
             return 0
         lock_path.unlink(missing_ok=True)
