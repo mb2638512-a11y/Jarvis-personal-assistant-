@@ -17,4 +17,13 @@ for ($i = 0; $i -lt 20; $i++) {
   catch { Start-Sleep -Seconds 1 }
 }
 if (-not $healthy) { Write-Warning "Backend did not respond yet. Check minimized PowerShell windows and host\.env." }
-Start-Process $AppExe
+# Launch the actual desktop window (not just the background services) and
+# request foreground activation so it does not remain behind the installer.
+$appProcess = Start-Process -FilePath $AppExe -WorkingDirectory (Split-Path -Parent $AppExe) -PassThru
+Start-Sleep -Seconds 2
+try {
+  $shell = New-Object -ComObject WScript.Shell
+  [void]$shell.AppActivate($appProcess.Id)
+} catch {
+  Write-Warning "Jarvis started, but Windows did not allow foreground activation. Use the Jarvis Start Menu shortcut."
+}
