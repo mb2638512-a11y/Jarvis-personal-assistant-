@@ -12,10 +12,12 @@ The earlier visual prototype/source bundle is not present on the current clean b
 
 ## Current backend foundation
 - FastAPI backend with an OpenAI-compatible chat endpoint (requires your own provider API key).
+- Atticus-backed Windows device agent using vendored `winctl.py` through the typed remote task broker.
+- Google ARTEMIS bridge for task submission/status against a separately hosted, private Android automation daemon.
 - Postiz Public API adapter for channels, posts, media URL import, next scheduling slots, and channel/post analytics.
 - Postiz credentials stay server-side; action routes require a separate gateway token.
 - Explicit configuration through environment variables; secrets are not committed.
-- Unit tests for configuration, safe failure behavior, and mocked Postiz API requests.
+- Unit tests for configuration, safe failure behavior, mocked Postiz API requests, and the ARTEMIS bridge.
 - GitHub Actions CI workflow for the Python test suite.
 
 ## Quick start (backend)
@@ -44,7 +46,7 @@ Open `http://127.0.0.1:8000/docs` for the OpenAPI interface. Never put provider 
 - `GET /api/postiz/find-slot/{integration_id}`: get the next scheduling slot.
 - `GET /api/postiz/analytics/{integration_id}` and `GET /api/postiz/analytics/post/{id}`: analytics.
 
-See [Postiz integration guide](docs/POSTIZ_INTEGRATION.md) and [shared client API contract](docs/JARVIS_CLIENT_API.md). Protected Postiz action routes require `X-Jarvis-Postiz-Token`. Until Jarvis user authentication and per-user permissions exist, keep them on a trusted network or behind an authenticated private gateway; do not embed this token in Android or Windows clients.
+See [three-engine runtime integration](docs/THREE_REPO_RUNTIME_INTEGRATION.md), [Postiz integration guide](docs/POSTIZ_INTEGRATION.md), and [shared client API contract](docs/JARVIS_CLIENT_API.md). Protected Postiz action routes require `X-Jarvis-Postiz-Token`. Until Jarvis user authentication and per-user permissions exist, keep them on a trusted network or behind an authenticated private gateway; do not embed this token in Android or Windows clients.
 
 ## Verification and releases
 - CI workflow: [Jarvis backend CI](.github/workflows/ci.yml).
@@ -54,9 +56,10 @@ See [Postiz integration guide](docs/POSTIZ_INTEGRATION.md) and [shared client AP
 
 ## Next steps
 1. Configure Postiz credentials in the deployment secret store.
-2. Run CI and verify a protected `GET /api/postiz/channels` request against a real Postiz workspace.
-3. Add Jarvis sign-in and per-user authorization before exposing social actions to remote clients.
-4. Wire both Android and Windows clients to the shared backend API and test each platform build.
+2. Run the Windows device agent on the paired PC and verify its heartbeat/task result.
+3. Configure a private ARTEMIS host with an attached Android device and verify `/api/artemis/status`.
+4. Verify a protected `GET /api/postiz/channels` request against a non-production Postiz workspace.
+5. Add Jarvis sign-in and per-user authorization before exposing remote actions to public clients.
 
 
 ## Personal insights: usage, wellbeing and security
