@@ -142,9 +142,10 @@ async def submit_artemis_task(
 @router.get("/tasks/{task_id}")
 async def get_artemis_task(
     task_id: str,
+    x_jarvis_remote_token: str | None = Header(default=None),
     x_jarvis_device_token: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    _remote_auth(None, x_jarvis_device_token)
+    _remote_auth(x_jarvis_remote_token, x_jarvis_device_token)
     try:
         parsed = str(uuid.UUID(task_id))
     except ValueError as exc:
