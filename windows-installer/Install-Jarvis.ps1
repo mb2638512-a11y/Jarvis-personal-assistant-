@@ -24,7 +24,7 @@ function Find-Python311 {
   $candidates = @(
     (Join-Path $env:LOCALAPPDATA "Programs\Python\Python311\python.exe"),
     (Join-Path $env:ProgramFiles "Python311\python.exe"),
-    (Join-Path \${env:ProgramFiles(x86)} "Python311\python.exe")
+    (Join-Path ([Environment]::GetFolderPath("ProgramFilesX86")) "Python311\python.exe")
   ) | Where-Object { $_ -and (Test-Path $_) }
   foreach ($candidate in $candidates) {
     $version = & $candidate -c "import sys; print(sys.version_info >= (3,11) and sys.version_info < (3,12))"
