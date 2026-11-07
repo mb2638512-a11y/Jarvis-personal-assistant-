@@ -1,6 +1,6 @@
 #define MyAppName "Jarvis"
 #define MyAppVersion "0.2.0"
-#define BundleDir "build\installer-bundle"
+#define BundleDir "..\build\installer-bundle"
 
 [Setup]
 AppId={{A4B2CC7A-39C1-4B6A-9C0B-6D8A1C6D0F22}
@@ -9,7 +9,7 @@ AppVersion={#MyAppVersion}
 DefaultDirName={tmp}\JarvisInstaller
 DisableProgramGroupPage=yes
 Uninstallable=no
-OutputDir=build\installer-output
+OutputDir=..\build\installer-output
 OutputBaseFilename=Jarvis-Setup
 Compression=lzma2
 SolidCompression=yes
