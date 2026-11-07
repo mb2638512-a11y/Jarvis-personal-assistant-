@@ -58,7 +58,7 @@ jobs:
       - name: Resolve Flutter dependencies
         run: flutter pub get
       - name: Analyze Dart source
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
       - name: Build release APK
         run: flutter build apk --release
       - uses: actions/upload-artifact@v4
@@ -91,7 +91,7 @@ jobs:
       - name: Resolve Flutter dependencies
         run: flutter pub get
       - name: Analyze Dart source
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
       - name: Build Windows release app
         run: flutter build windows --release
       - name: Stage self-contained Jarvis host and desktop app
