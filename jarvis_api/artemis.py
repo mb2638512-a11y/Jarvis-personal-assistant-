@@ -17,6 +17,7 @@ from urllib.parse import urlsplit
 import httpx
 from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
+from starlette.concurrency import run_in_threadpool
 
 from jarvis_api.config import settings
 from jarvis_api.integration_vault import get_integration_config
@@ -137,7 +138,8 @@ async def start_local_artemis_host(request: Request) -> dict[str, Any]:
     log_handle = log_path.open("ab")
     flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     try:
-        process = subprocess.Popen(
+        process = await run_in_threadpool(
+            subprocess.Popen,
             ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)],
             cwd=str(root),
             stdout=log_handle,
