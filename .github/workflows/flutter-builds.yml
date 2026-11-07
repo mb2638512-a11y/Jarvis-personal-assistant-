@@ -7,6 +7,7 @@ on:
       - "lib/**"
       - "pubspec.yaml"
       - "windows-installer/**"
+      - "windows-launcher/**"
       - "scripts/**"
       - "jarvis_api/**"
       - "backend/vendor/**"
@@ -17,6 +18,7 @@ on:
       - "lib/**"
       - "pubspec.yaml"
       - "windows-installer/**"
+      - "windows-launcher/**"
       - "scripts/**"
       - "jarvis_api/**"
       - "backend/vendor/**"
@@ -25,9 +27,8 @@ on:
 permissions:
   contents: read
 
-# Keep only the newest build/test run for this branch or PR.
 concurrency:
-  group: jarvis-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: jarvis-\${{ github.workflow }}-\${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -75,6 +76,9 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
       - name: Generate Windows platform scaffold
         shell: pwsh
         run: |
@@ -94,6 +98,11 @@ jobs:
         run: flutter analyze --no-fatal-infos
       - name: Build Windows release app
         run: flutter build windows --release
+      - name: Build native silent Windows launcher
+        shell: pwsh
+        run: |
+          dotnet publish windows-launcher/JarvisLauncher.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -o build/launcher
+          if (!(Test-Path "build/launcher/JarvisLauncher.exe")) { throw "Native Jarvis launcher was not produced." }
       - name: Stage self-contained Jarvis host and desktop app
         shell: pwsh
         run: |
@@ -111,6 +120,7 @@ jobs:
           Copy-Item "build/windows/x64/runner/Release/*" "$bundle/app" -Recurse -Force
           Copy-Item "windows-installer/Install-Jarvis.ps1" "$bundle/Install-Jarvis.ps1" -Force
           Copy-Item "windows-installer/Start-Jarvis.ps1" "$bundle/Start-Jarvis.ps1" -Force
+          Copy-Item "build/launcher/JarvisLauncher.exe" "$bundle/JarvisLauncher.exe" -Force
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
       - name: Build Windows installer
@@ -119,6 +129,12 @@ jobs:
           New-Item -ItemType Directory -Force -Path "build/installer-output" | Out-Null
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "windows-installer/Jarvis.iss"
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed." }
+      - name: Verify installer and launcher
+        shell: pwsh
+        run: |
+          if (!(Test-Path "build/installer-output/Jarvis-Setup.exe")) { throw "Jarvis installer missing." }
+          if (!(Test-Path "build/launcher/JarvisLauncher.exe")) { throw "Jarvis launcher missing." }
+          Get-Item "build/installer-output/Jarvis-Setup.exe", "build/launcher/JarvisLauncher.exe" | Select-Object Name,Length
       - name: Package portable Windows build
         shell: pwsh
         run: Compress-Archive -Path "build/installer-bundle/app/*" -DestinationPath "build/installer-output/Jarvis-Windows-x64.zip" -Force
