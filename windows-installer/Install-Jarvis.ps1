@@ -55,5 +55,22 @@ $startMenuShortcut.WorkingDirectory = $InstallRoot
 $startMenuShortcut.IconLocation = Join-Path $AppRoot "jarvis_personal_assistant.exe"
 $startMenuShortcut.Save()
 
+# Add a second top-level Start Menu entry for fast Windows Search discovery.
+$rootMenuShortcut = $ws.CreateShortcut((Join-Path ([Environment]::GetFolderPath("Programs")) "Jarvis.lnk"))
+$rootMenuShortcut.TargetPath = "powershell.exe"
+$rootMenuShortcut.Arguments = ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $launcher)
+$rootMenuShortcut.WorkingDirectory = $InstallRoot
+$rootMenuShortcut.IconLocation = Join-Path $AppRoot "jarvis_personal_assistant.exe"
+$rootMenuShortcut.Save()
+
+# Register the executable name for Windows Run/Search-style app resolution.
+$appExe = Join-Path $AppRoot "jarvis_personal_assistant.exe"
+if (Test-Path $appExe) {
+  $appPathKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths\jarvis_personal_assistant.exe"
+  New-Item -Path $appPathKey -Force | Out-Null
+  Set-Item -Path $appPathKey -Value $appExe
+  New-ItemProperty -Path $appPathKey -Name "Path" -Value $AppRoot -PropertyType String -Force | Out-Null
+}
+
 Write-Host "Jarvis installed at $InstallRoot" -ForegroundColor Green
 Write-Host "Next: open Jarvis and add your AI provider in the PC Model Control screen. API keys are encrypted in the PC vault." -ForegroundColor Cyan
