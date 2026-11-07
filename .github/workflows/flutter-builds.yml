@@ -148,8 +148,9 @@ jobs:
         shell: pwsh
         run: |
           $installRoot = Join-Path $env:RUNNER_TEMP "Jarvis Smoke Test"
-          & "build/installer-output/Jarvis-Setup.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$installRoot"
-          if ($LASTEXITCODE -ne 0) { throw "Silent Jarvis installation failed with exit code $LASTEXITCODE." }
+          $installArguments = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=`"$installRoot`""
+          $installerProcess = Start-Process -FilePath "build/installer-output/Jarvis-Setup.exe" -ArgumentList $installArguments -Wait -PassThru
+          if ($installerProcess.ExitCode -ne 0) { throw "Silent Jarvis installation failed with exit code $($installerProcess.ExitCode)." }
           if (!(Test-Path (Join-Path $installRoot "Jarvis.exe"))) { throw "Installed Jarvis.exe is missing." }
           if (!(Test-Path (Join-Path $installRoot "app/jarvis_personal_assistant.exe"))) { throw "Flutter desktop GUI executable is missing." }
           $launcher = Start-Process -FilePath (Join-Path $installRoot "Jarvis.exe") -PassThru
