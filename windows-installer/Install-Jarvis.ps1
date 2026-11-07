@@ -1,6 +1,7 @@
+param([string]$InstallRoot = (Join-Path $env:LOCALAPPDATA "Programs\Jarvis"))
 $ErrorActionPreference = "Stop"
 $BundleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$InstallRoot = Join-Path $env:LOCALAPPDATA "Programs\Jarvis"
+$InstallRoot = [System.IO.Path]::GetFullPath($InstallRoot)
 $HostRoot = Join-Path $InstallRoot "host"
 $AppRoot = Join-Path $InstallRoot "app"
 Write-Host "JARVIS WINDOWS INSTALLER" -ForegroundColor Cyan
