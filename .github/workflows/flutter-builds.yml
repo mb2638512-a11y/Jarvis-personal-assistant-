@@ -102,7 +102,10 @@ jobs:
           Copy-Item "jarvis_api" "$bundle/host/jarvis_api" -Recurse -Force
           Copy-Item "backend/vendor" "$bundle/host/backend" -Recurse -Force
           Copy-Item "scripts" "$bundle/host/scripts" -Recurse -Force
-          Copy-Item "windows" "$bundle/host/windows" -Recurse -Force
+          New-Item -ItemType Directory -Force -Path "$bundle/host/windows" | Out-Null
+          if (Test-Path "windows/jarvis_device_agent.py") {
+            Copy-Item "windows/jarvis_device_agent.py" "$bundle/host/windows/jarvis_device_agent.py" -Force
+          }
           Copy-Item "pyproject.toml" "$bundle/host/pyproject.toml" -Force
           Copy-Item ".env.example" "$bundle/host/.env.example" -Force
           Copy-Item "build/windows/x64/runner/Release/*" "$bundle/app" -Recurse -Force
