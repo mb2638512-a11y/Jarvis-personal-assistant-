@@ -6,7 +6,9 @@
 AppId={{A4B2CC7A-39C1-4B6A-9C0B-6D8A1C6D0F22}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-DefaultDirName={tmp}\JarvisInstaller
+DefaultDirName={localappdata}\Programs\Jarvis
+DisableDirPage=no
+DirExistsWarning=no
 DisableProgramGroupPage=yes
 Uninstallable=no
 OutputDir=..\build\installer-output
@@ -22,8 +24,8 @@ Source: "{#BundleDir}\*"; DestDir: "{tmp}\JarvisBundle"; Flags: recursesubdirs c
 
 [Icons]
 ; Register launch points at install time so Start Menu search and Desktop both find Jarvis.
-Name: "{autoprograms}\Jarvis"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{localappdata}\Programs\Jarvis\Start-Jarvis.ps1"""; WorkingDir: "{localappdata}\Programs\Jarvis"
-Name: "{autodesktop}\Jarvis"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{localappdata}\Programs\Jarvis\Start-Jarvis.ps1"""; WorkingDir: "{localappdata}\Programs\Jarvis"
+Name: "{autoprograms}\Jarvis"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Start-Jarvis.ps1"""; WorkingDir: "{app}"
+Name: "{autodesktop}\Jarvis"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\Start-Jarvis.ps1"""; WorkingDir: "{app}"
 
 [Run]
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\JarvisBundle\Install-Jarvis.ps1"""; Flags: waituntilterminated
+Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\JarvisBundle\Install-Jarvis.ps1"" -InstallRoot ""{app}"""; Flags: waituntilterminated
