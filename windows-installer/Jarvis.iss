@@ -20,5 +20,10 @@ ArchitecturesInstallIn64BitMode=x64
 [Files]
 Source: "{#BundleDir}\*"; DestDir: "{tmp}\JarvisBundle"; Flags: recursesubdirs createallsubdirs ignoreversion
 
+[Icons]
+; Register launch points at install time so Start Menu search and Desktop both find Jarvis.
+Name: "{autoprograms}\Jarvis"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{localappdata}\Programs\Jarvis\Start-Jarvis.ps1"""; WorkingDir: "{localappdata}\Programs\Jarvis"
+Name: "{autodesktop}\Jarvis"; Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{localappdata}\Programs\Jarvis\Start-Jarvis.ps1"""; WorkingDir: "{localappdata}\Programs\Jarvis"
+
 [Run]
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\JarvisBundle\Install-Jarvis.ps1"""; Flags: waituntilterminated
