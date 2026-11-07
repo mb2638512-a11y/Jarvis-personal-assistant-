@@ -95,6 +95,12 @@ jobs:
           if ($agent -and (Test-Path $agent)) {
             Copy-Item $agent "windows/jarvis_device_agent.py" -Force
           }
+          $runnerMain = "windows/runner/main.cpp"
+          if (Test-Path $runnerMain) {
+            $runnerSource = Get-Content $runnerMain -Raw
+            $runnerSource = $runnerSource.Replace('L"jarvis_personal_assistant"', 'L"Jarvis"')
+            Set-Content -Path $runnerMain -Value $runnerSource -Encoding UTF8
+          }
       - name: Resolve Flutter dependencies
         run: flutter pub get
       - name: Analyze Dart source
