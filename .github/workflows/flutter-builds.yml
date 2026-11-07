@@ -162,7 +162,26 @@ jobs:
             } catch {}
             Start-Sleep -Seconds 1
           }
-          if (!$healthy) { throw "Installed Jarvis backend did not become healthy within 75 seconds." }
+          if (!$healthy) {
+            Write-Host "::group::Jarvis startup diagnostics"
+            $logRoot = Join-Path $env:LOCALAPPDATA "Jarvis\logs"
+            foreach ($logName in @("launcher.log", "backend.log", "backend-error.log", "agent-error.log")) {
+              $logPath = Join-Path $logRoot $logName
+              if (Test-Path $logPath) {
+                Write-Host "--- $logName ---"
+                Get-Content $logPath -Tail 120
+              } else { Write-Host "--- $logName not created ---" }
+            }
+            $installedPython = Join-Path $installRoot "host\.venv\Scripts\python.exe"
+            if (Test-Path $installedPython) {
+              Write-Host "--- Python import diagnostic ---"
+              Push-Location (Join-Path $installRoot "host")
+              try { & $installedPython -c "import jarvis_api.main; print('Jarvis API import OK')" 2>&1 } finally { Pop-Location }
+            }
+            Get-Process -Name "Jarvis", "python", "powershell", "jarvis_personal_assistant" -ErrorAction SilentlyContinue | Select-Object ProcessName,Id,Path
+            Write-Host "::endgroup::"
+            throw "Installed Jarvis backend did not become healthy within 75 seconds."
+          }
           $gui = Get-Process -Name "jarvis_personal_assistant" -ErrorAction SilentlyContinue
           if (!$gui) { throw "Jarvis backend started, but the actual desktop GUI process did not launch." }
           Write-Host "PASS: installer, backend health endpoint, and Flutter desktop GUI launch verified."
