@@ -1,0 +1,269 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:qr_flutter/qr_flutter.dart';
+
+class WindowsPairingPage extends StatefulWidget {
+  final String backendUrl;
+  const WindowsPairingPage({super.key, required this.backendUrl});
+  @override
+  State<WindowsPairingPage> createState() => _WindowsPairingPageState();
+}
+
+class _WindowsPairingPageState extends State<WindowsPairingPage> {
+  String? _qr;
+  String _code = '';
+  final List<Map<String, dynamic>> _devices = [];
+  final List<Map<String, dynamic>> _pending = [];
+  Timer? _pendingTimer;
+  String _status = 'Generate a one-time QR code for your Android phone.';
+  DateTime? _expiresAt;
+  bool _busy = false;
+  Timer? _timer;
+  int _secondsLeft = 0;
+
+  Uri? get _endpoint {
+    final parsed = Uri.tryParse(widget.backendUrl.trim());
+    if (parsed == null || parsed.host.isEmpty ||
+        !{'localhost', '127.0.0.1'}.contains(parsed.host) ||
+        parsed.scheme != 'http') return null;
+    return parsed.replace(path: '/api/pairing/challenge', query: null, fragment: null);
+  }
+
+  Future<void> _generate() async {
+    final uri = _endpoint;
+    if (uri == null) {
+      setState(() => _status = 'Open this page in the Windows Jarvis app with its local backend running.');
+      return;
+    }
+    setState(() { _busy = true; _status = 'Generating secure one-time pairing QR…'; });
+    try {
+      final response = await http.post(uri).timeout(const Duration(seconds: 10));
+      final body = jsonDecode(response.body);
+      if (response.statusCode < 200 || response.statusCode >= 300 || body is! Map) {
+        final detail = body is Map ? body['detail'] : null;
+        throw Exception(detail?.toString() ?? 'Pairing challenge could not be created.');
+      }
+      final qr = body['pairing_uri'];
+      final code = body['code'];
+      final expires = body['expires_in_seconds'];
+      if (qr is! String || code is! String || expires is! num) {
+        throw const FormatException('Pairing server returned incomplete challenge data.');
+      }
+      final parsedQr = Uri.tryParse(qr);
+      final host = Uri.tryParse(parsedQr?.queryParameters['host'] ?? '');
+      if (parsedQr == null || parsedQr.scheme != 'jarvis' || parsedQr.host != 'pair' ||
+          host == null || host.scheme != 'https' || host.host.isEmpty) {
+        throw Exception('Set JARVIS_PUBLIC_BASE_URL to your private HTTPS host URL in the PC .env file, then restart Jarvis.');
+      }
+      _timer?.cancel();
+      setState(() {
+        _qr = qr;
+        _code = code;
+        _secondsLeft = expires.toInt();
+        _expiresAt = DateTime.now().add(Duration(seconds: _secondsLeft));
+        _status = 'Scan this QR from Jarvis on your Android phone. Keep both devices on your private network.';
+      });
+      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) return;
+        final remaining = _expiresAt!.difference(DateTime.now()).inSeconds;
+        setState(() => _secondsLeft = remaining.clamp(0, 180));
+        if (_secondsLeft <= 0) {
+          timer.cancel();
+          setState(() { _qr = null; _status = 'QR expired. Generate a new one to pair.'; });
+        }
+      });
+    } catch (error) {
+      if (mounted) setState(() { _qr = null; _status = error.toString().replaceFirst('Exception: ', ''); });
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDevices();
+    _loadPending();
+    _pendingTimer = Timer.periodic(const Duration(seconds: 2), (_) => _loadPending());
+  }
+
+  Future<void> _loadDevices() async {
+    final base = Uri.tryParse(widget.backendUrl.trim());
+    if (base == null || !{'localhost', '127.0.0.1'}.contains(base.host)) return;
+    final uri = base.replace(path: '/api/pairing/devices', query: null, fragment: null);
+    try {
+      final response = await http.get(uri).timeout(const Duration(seconds: 8));
+      final body = jsonDecode(response.body);
+      if (response.statusCode == 200 && body is Map && body['devices'] is List && mounted) {
+        setState(() {
+          _devices
+            ..clear()
+            ..addAll((body['devices'] as List).whereType<Map>().map((d) => Map<String, dynamic>.from(d)));
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _loadPending() async {
+    final base = Uri.tryParse(widget.backendUrl.trim());
+    if (base == null || !{'localhost', '127.0.0.1'}.contains(base.host)) return;
+    final uri = base.replace(path: '/api/pairing/pending', query: null, fragment: null);
+    try {
+      final response = await http.get(uri).timeout(const Duration(seconds: 8));
+      final body = jsonDecode(response.body);
+      if (response.statusCode == 200 && body is Map && body['requests'] is List && mounted) {
+        setState(() {
+          _pending
+            ..clear()
+            ..addAll((body['requests'] as List).whereType<Map>().map((d) => Map<String, dynamic>.from(d)));
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _decide(String id, bool approve) async {
+    final base = Uri.tryParse(widget.backendUrl.trim());
+    if (base == null) return;
+    final action = approve ? 'approve' : 'deny';
+    final uri = base.replace(path: '/api/pairing/pending/$id/$action', query: null, fragment: null);
+    try {
+      final response = await http.post(uri).timeout(const Duration(seconds: 10));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final data = jsonDecode(response.body);
+        throw Exception(data is Map ? (data['detail'] ?? 'Pairing decision failed.') : 'HTTP ' + response.statusCode.toString());
+      }
+      await _loadPending();
+      if (mounted) setState(() => _status = approve
+        ? 'Device approved. The phone can now finish pairing.'
+        : 'Pairing request denied.');
+    } catch (error) {
+      if (mounted) setState(() => _status = 'Could not update pairing request: ' + error.toString());
+    }
+  }
+
+  Future<void> _revoke(String id, String label) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Revoke paired device?'),
+        content: Text('This will disconnect $label from this Jarvis PC.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Revoke')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    final base = Uri.tryParse(widget.backendUrl.trim());
+    if (base == null) return;
+    final uri = base.replace(path: '/api/pairing/devices/$id', query: null, fragment: null);
+    try {
+      final response = await http.delete(uri).timeout(const Duration(seconds: 10));
+      if (response.statusCode < 200 || response.statusCode >= 300) throw Exception('HTTP ${response.statusCode}');
+      await _loadDevices();
+    } catch (error) {
+      if (mounted) setState(() => _status = 'Could not revoke device: $error');
+    }
+  }
+
+  @override
+  void dispose() { _timer?.cancel(); _pendingTimer?.cancel(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Pair an Android device')),
+    body: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+              const Icon(Icons.devices_rounded, size: 44, color: Color(0xff75e3ff)),
+              const SizedBox(height: 14),
+              const Text('One PC · One shared Jarvis backend', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Text(_status, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xffa6b8ca))),
+              const SizedBox(height: 22),
+              if (_qr != null) Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
+                child: QrImageView(data: _qr!, version: QrVersions.auto, size: 260),
+              ),
+              if (_code.isNotEmpty && _qr != null) ...[
+                const SizedBox(height: 14),
+                SelectableText('Backup code: $_code', style: const TextStyle(fontSize: 22, letterSpacing: 4, fontWeight: FontWeight.bold)),
+                Text('Expires in $_secondsLeft seconds', style: const TextStyle(color: Color(0xffa6b8ca))),
+              ],
+              const SizedBox(height: 22),
+              FilledButton.icon(
+                onPressed: _busy ? null : _generate,
+                icon: const Icon(Icons.qr_code_2),
+                label: Text(_qr == null ? 'Generate pairing QR' : 'Generate a new QR'),
+              ),
+              const SizedBox(height: 18),
+              Row(children: [
+                const Expanded(child: Text('APPROVAL REQUESTS', style: TextStyle(color: Color(0xffffd27a), fontWeight: FontWeight.w800, letterSpacing: 1.2))),
+                IconButton(onPressed: _loadPending, icon: const Icon(Icons.refresh), tooltip: 'Refresh pending approvals'),
+              ]),
+              if (_pending.isEmpty)
+                const Text('No devices waiting for approval.', style: TextStyle(color: Color(0xffa6b8ca)))
+              else
+                ..._pending.map((request) {
+                  final id = request['id']?.toString() ?? '';
+                  final label = request['label']?.toString() ?? 'Android device';
+                  final platform = request['platform']?.toString() ?? 'unknown';
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                        Text('Platform: ' + platform + ' · one-time QR request', style: const TextStyle(color: Color(0xffa6b8ca), fontSize: 12)),
+                        Row(children: [
+                          TextButton(onPressed: () => _decide(id, false), child: const Text('Deny')),
+                          const Spacer(),
+                          FilledButton.icon(onPressed: () => _decide(id, true), icon: const Icon(Icons.verified_user), label: const Text('Approve')),
+                        ]),
+                      ]),
+                    ),
+                  );
+                }),
+              const SizedBox(height: 16),
+              Row(children: [
+                const Expanded(child: Text('PAIRED DEVICES', style: TextStyle(color: Color(0xff80e2fb), fontWeight: FontWeight.w800, letterSpacing: 1.2))),
+                IconButton(onPressed: _loadDevices, icon: const Icon(Icons.refresh), tooltip: 'Refresh devices'),
+              ]),
+              if (_devices.isEmpty)
+                const Text('No Android devices paired yet.', style: TextStyle(color: Color(0xffa6b8ca)))
+              else
+                ..._devices.map((device) {
+                  final id = device['id']?.toString() ?? '';
+                  final label = device['label']?.toString() ?? 'Device';
+                  final revoked = device['revoked'] == 1 || device['revoked'] == true;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(device['platform'] == 'android' ? Icons.phone_android : Icons.devices),
+                    title: Text(label),
+                    subtitle: Text('${device['platform']} · ${revoked ? 'revoked' : 'active'}'),
+                    trailing: revoked ? null : IconButton(
+                      onPressed: () => _revoke(id, label),
+                      icon: const Icon(Icons.link_off),
+                      tooltip: 'Revoke device',
+                    ),
+                  );
+                }),
+              const SizedBox(height: 8),
+              const Text('The QR contains a short-lived one-time challenge, never your AI API keys.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Color(0xff8295aa))),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}

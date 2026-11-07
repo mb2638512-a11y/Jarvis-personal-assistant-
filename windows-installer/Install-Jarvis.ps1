@@ -1,63 +1,87 @@
+param([string]$InstallRoot = (Join-Path $env:LOCALAPPDATA "Programs\Jarvis"))
 $ErrorActionPreference = "Stop"
 $BundleRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$InstallRoot = Join-Path $env:LOCALAPPDATA "Programs\Jarvis"
+$InstallRoot = [System.IO.Path]::GetFullPath($InstallRoot)
 $HostRoot = Join-Path $InstallRoot "host"
 $AppRoot = Join-Path $InstallRoot "app"
 Write-Host "JARVIS WINDOWS INSTALLER" -ForegroundColor Cyan
 
-if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-  throw "Microsoft winget is required. Install/update App Installer from Microsoft Store, then run Jarvis-Setup.exe again."
+function Refresh-ProcessPath {
+  $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+  $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+  $env:Path = @($machinePath, $userPath) -join ";"
 }
-$pythonOk = $false
-if (Get-Command py -ErrorAction SilentlyContinue) {
-  & py -3.11 --version *> $null
-  $pythonOk = ($LASTEXITCODE -eq 0)
+
+function Find-Python311 {
+  # Resolve the py launcher to the actual 3.11 interpreter. Passing py.exe
+  # through to the bootstrap loses the -3.11 selector and can create no venv.
+  $py = Get-Command py.exe -ErrorAction SilentlyContinue
+  if ($py) {
+    $resolved = & $py.Source -3.11 -c "import sys; print(sys.executable)" 2>$null
+    if ($LASTEXITCODE -eq 0 -and $resolved) {
+      $resolved = $resolved.Trim()
+      if (Test-Path $resolved) { return @{ Exe = $resolved; Args = @() } }
+    }
+  }
+
+  $python = Get-Command python.exe -ErrorAction SilentlyContinue
+  if ($python) {
+    $version = & $python.Source -c "import sys; print(sys.version_info >= (3,11) and sys.version_info < (3,12))" 2>$null
+    if ($version -eq "True") { return @{ Exe = $python.Source; Args = @() } }
+  }
+
+  $candidates = @(
+    (Join-Path $env:LOCALAPPDATA "Programs\Python\Python311\python.exe"),
+    (Join-Path $env:ProgramFiles "Python311\python.exe"),
+    (Join-Path ([Environment]::GetFolderPath("ProgramFilesX86")) "Python311\python.exe")
+  ) | Where-Object { $_ -and (Test-Path $_) }
+
+  foreach ($candidate in $candidates) {
+    $version = & $candidate -c "import sys; print(sys.version_info >= (3,11) and sys.version_info < (3,12))" 2>$null
+    if ($version -eq "True") { return @{ Exe = $candidate; Args = @() } }
+  }
+  return $null
 }
-if (-not $pythonOk) {
-  winget install --id Python.Python.3.11 --exact --silent --accept-package-agreements --accept-source-agreements
-  if ($LASTEXITCODE -ne 0) { throw "Python 3.11 installation failed. Install Python 3.11 and rerun Jarvis-Setup.exe." }
+
+$python = Find-Python311
+if (-not $python) {
+  $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+  if (-not $winget) {
+    throw "Python 3.11 is required. Install Python 3.11 or Microsoft App Installer (winget), then run Jarvis Setup again."
+  }
+  & $winget.Source install --id Python.Python.3.11 --exact --silent --accept-package-agreements --accept-source-agreements
+  if ($LASTEXITCODE -ne 0) { throw "Python 3.11 installation failed. Install Python 3.11 manually and rerun Jarvis Setup." }
+  Refresh-ProcessPath
+  $python = Find-Python311
 }
-if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
-  throw "Python launcher was not found after installation. Restart Windows and rerun Jarvis-Setup.exe."
+if (-not $python) {
+  throw "Python 3.11 was installed but could not be located. Restart Windows, then run Jarvis Setup again."
 }
 
 New-Item -ItemType Directory -Force -Path $HostRoot,$AppRoot | Out-Null
 Copy-Item (Join-Path $BundleRoot "host\*") $HostRoot -Recurse -Force
 Copy-Item (Join-Path $BundleRoot "app\*") $AppRoot -Recurse -Force
 Copy-Item (Join-Path $BundleRoot "Start-Jarvis.ps1") (Join-Path $InstallRoot "Start-Jarvis.ps1") -Force
+$launcherSource = Join-Path $BundleRoot "Jarvis.exe"
+if (-not (Test-Path $launcherSource)) { throw "Jarvis.exe launcher is missing from the installer package." }
+Copy-Item $launcherSource (Join-Path $InstallRoot "Jarvis.exe") -Force
 
+$env:JARVIS_BOOTSTRAP_PYTHON = $python.Exe
 Push-Location $HostRoot
 try {
+  Write-Host "Creating Jarvis Python environment with $($python.Exe)..."
   & .\scripts\install-windows-host.ps1
-  if ($LASTEXITCODE -ne 0) { throw "Backend dependency installation failed." }
-} finally { Pop-Location }
-
-$launcher = Join-Path $InstallRoot "Start-Jarvis.ps1"
-$shortcutPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "Jarvis.lnk"
-$ws = New-Object -ComObject WScript.Shell
-$shortcut = $ws.CreateShortcut($shortcutPath)
-$shortcut.TargetPath = "powershell.exe"
-$shortcut.Arguments = ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $launcher)
-$shortcut.WorkingDirectory = $InstallRoot
-$shortcut.IconLocation = Join-Path $AppRoot "jarvis_personal_assistant.exe"
-$shortcut.Save()
-
-# Also register Jarvis in the current user's Start Menu so it is easy to find
-# even if the desktop shortcut is hidden or the desktop is not visible.
-$startMenu = Join-Path ([Environment]::GetFolderPath("Programs")) "Jarvis"
-New-Item -ItemType Directory -Force -Path $startMenu | Out-Null
-$startMenuShortcut = $ws.CreateShortcut((Join-Path $startMenu "Jarvis.lnk"))
-$startMenuShortcut.TargetPath = "powershell.exe"
-$startMenuShortcut.Arguments = ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $launcher)
-$startMenuShortcut.WorkingDirectory = $InstallRoot
-$startMenuShortcut.IconLocation = Join-Path $AppRoot "jarvis_personal_assistant.exe"
-$startMenuShortcut.Save()
-
-Write-Host "Jarvis installed at $InstallRoot" -ForegroundColor Green
-$envPath = Join-Path $HostRoot ".env"
-$envText = Get-Content $envPath -Raw
-if ($envText -notmatch "(?m)^JARVIS_API_KEY=.+$" -or $envText -match "(?m)^JARVIS_MODEL=\s*$") {
-  Start-Process notepad.exe -ArgumentList $envPath -Wait
+  if (-not (Test-Path (Join-Path $HostRoot ".venv\Scripts\python.exe"))) {
+    throw "Jarvis setup did not create host\.venv\Scripts\python.exe. Check Python and pip installation."
+  }
+} finally {
+  Pop-Location
 }
-$launcherArgs = ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $launcher)
-Start-Process powershell.exe -ArgumentList $launcherArgs -WorkingDirectory $InstallRoot
+
+$launcherExe = Join-Path $InstallRoot "Jarvis.exe"
+$appPathKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths\Jarvis.exe"
+New-Item -Path $appPathKey -Force | Out-Null
+Set-Item -Path $appPathKey -Value $launcherExe
+New-ItemProperty -Path $appPathKey -Name "Path" -Value $InstallRoot -PropertyType String -Force | Out-Null
+Write-Host "Jarvis installed at $InstallRoot" -ForegroundColor Green
+Write-Host "Start Menu and Desktop shortcuts now point to Jarvis.exe." -ForegroundColor Cyan

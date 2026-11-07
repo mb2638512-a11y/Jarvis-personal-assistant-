@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
-from jarvis_api.main import app
 from jarvis_api import wellbeing
+from jarvis_api.main import app
 
 
 def test_wellbeing_routes_require_gateway_token(monkeypatch, tmp_path):

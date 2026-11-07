@@ -2,16 +2,20 @@ from pathlib import Path
 from typing import Literal
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
-from jarvis_api.config import settings
 from jarvis_api.artemis import router as artemis_router
+from jarvis_api.config import settings
+from jarvis_api.device_pairing import router as device_pairing_router
+from jarvis_api.integration_vault import get_integration_config, router as integration_vault_router
 from jarvis_api.integrations import router as integrations_router
 from jarvis_api.mcp_registry import router as mcp_router
+from jarvis_api.model_catalog import router as model_catalog_router
 from jarvis_api.postiz import router as postiz_router
-from jarvis_api.remote_control import router as remote_control_router
+from jarvis_api.provider_vault import router as provider_vault_router, active_provider
+from jarvis_api.remote_control import _auth as _remote_auth, router as remote_control_router
 from jarvis_api.social_oauth import router as social_oauth_router
 from jarvis_api.wellbeing import router as wellbeing_router
 
@@ -19,9 +23,13 @@ app = FastAPI(title="Jarvis Personal Assistant API", version="0.2.0")
 app.include_router(postiz_router)
 app.include_router(artemis_router)
 app.include_router(integrations_router)
+app.include_router(integration_vault_router)
 app.include_router(mcp_router)
 app.include_router(social_oauth_router)
 app.include_router(remote_control_router)
+app.include_router(device_pairing_router)
+app.include_router(model_catalog_router)
+app.include_router(provider_vault_router)
 app.include_router(wellbeing_router)
 
 
@@ -49,27 +57,37 @@ async def health() -> dict[str, str]:
 
 @app.get("/status")
 async def status() -> dict[str, object]:
-    configured = bool(settings.api_key.strip() and settings.model.strip())
+    configured = bool(active_provider() or (settings.api_key.strip() and settings.model.strip()))
+    postiz_config = get_integration_config("postiz") or {}
+    artemis_config = get_integration_config("artemis") or {}
     return {
         "service": "jarvis-api",
         "provider": "openai-compatible",
         "configured": configured,
         "ready": configured,
-        "postiz_configured": bool(settings.postiz_app_url.strip() or settings.postiz_api_key.strip()),
+        "postiz_configured": bool(postiz_config.get("api_key") or settings.postiz_api_key.strip()),
+        "artemis_configured": bool(artemis_config.get("gateway_token") or settings.artemis_gateway_token.strip()),
         "social_oauth_configured": bool(settings.postiz_app_url.strip()),
-        "note": "Configuration status only; a successful provider request has not been verified by this endpoint.",
+        "note": "Configuration status only; successful third-party connections must be checked separately.",
     }
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat(body: ChatRequest) -> ChatResponse:
-    if not settings.api_key.strip() or not settings.model.strip():
-        raise HTTPException(
-            status_code=503,
-            detail="AI provider is not configured. Set JARVIS_API_KEY and JARVIS_MODEL.",
-        )
-
-    base_url = settings.base_url.rstrip("/")
+async def chat(
+    body: ChatRequest,
+    request: Request,
+    x_jarvis_remote_token: str | None = Header(default=None),
+    x_jarvis_device_token: str | None = Header(default=None),
+) -> ChatResponse:
+    peer = request.client.host if request.client else ""
+    if peer not in {"127.0.0.1", "::1", "localhost"}:
+        _remote_auth(x_jarvis_remote_token, x_jarvis_device_token)
+    provider = active_provider()
+    api_key = provider["api_key"] if provider else settings.api_key.strip()
+    model = provider["model"] if provider else settings.model.strip()
+    base_url = (provider["base_url"] if provider else settings.base_url).rstrip("/")
+    if not api_key or not model:
+        raise HTTPException(status_code=503, detail="AI provider is not configured. Add a provider in PC-hosted Jarvis model settings.")
     if not base_url.startswith("https://") and not (
         base_url.startswith("http://")
         and base_url.split("/")[2].split(":")[0] in {"localhost", "127.0.0.1"}
@@ -80,7 +98,7 @@ async def chat(body: ChatRequest) -> ChatResponse:
         )
 
     payload = {
-        "model": settings.model,
+        "model": model,
         "messages": [
             {
                 "role": "system",
@@ -94,7 +112,7 @@ async def chat(body: ChatRequest) -> ChatResponse:
             response = await client.post(
                 f"{base_url}/chat/completions",
                 headers={
-                    "Authorization": f"Bearer {settings.api_key}",
+                    "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
                 json=payload,

@@ -15,6 +15,7 @@ from typing import Any
 from fastapi import APIRouter
 
 from jarvis_api.config import settings
+from jarvis_api.integration_vault import get_integration_config
 
 router = APIRouter(prefix="/api/integrations", tags=["Shared integrations"])
 ROOT = Path(__file__).resolve().parent.parent
@@ -70,11 +71,13 @@ def integration_status() -> dict[str, Any]:
             live_connected = configured and _windows_agent_online()
             note = "A paired Windows device agent must be running. It executes typed allow-listed actions through the vendored Atticus Windows primitives."
         elif item["id"] == "artemis":
-            configured = bool(settings.artemis_base_url.strip() and settings.artemis_gateway_token.strip())
+            config = get_integration_config("artemis") or {}
+            configured = bool((config.get("base_url") or settings.artemis_base_url.strip()) and (config.get("gateway_token") or settings.artemis_gateway_token.strip()))
             live_connected = False  # The dedicated /api/artemis/status endpoint performs the live probe.
             note = "ARTEMIS runs as a separate private Android device host. Configure its HTTPS URL and bearer token; the daemon must not be exposed publicly."
         else:
-            configured = bool(settings.postiz_api_key.strip() and settings.postiz_gateway_token.strip())
+            config = get_integration_config("postiz") or {}
+            configured = bool((config.get("api_key") or settings.postiz_api_key.strip()) and (config.get("base_url") or settings.postiz_base_url.strip()))
             live_connected = False  # Only a protected upstream request can verify credentials and workspace connectivity.
             note = "Postiz Public API adapter is connected in Jarvis backend code. Credentials and a real workspace request are still required to verify live publishing."
         results.append({

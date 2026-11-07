@@ -6,7 +6,7 @@ does not itself scan a device or guarantee protection from attackers.
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -53,7 +53,7 @@ def _authorize(token: str | None) -> None:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 class Metrics(BaseModel):
@@ -92,7 +92,7 @@ class SecurityPosture(BaseModel):
 def report_metrics(body: Metrics, x_jarvis_gateway_token: str | None = Header(default=None)) -> dict:
     _authorize(x_jarvis_gateway_token)
     now = _now()
-    observed = (body.observed_at or datetime.now(timezone.utc)).isoformat()
+    observed = (body.observed_at or datetime.now(UTC)).isoformat()
     with _connect() as db:
         db.execute("""INSERT INTO metrics
           (device_id,platform,cpu_percent,memory_percent,memory_used_bytes,memory_total_bytes,
@@ -126,7 +126,7 @@ def get_metrics(device_id: str = Query(min_length=1, max_length=100), limit: int
 def report_security(body: SecurityPosture, x_jarvis_gateway_token: str | None = Header(default=None)) -> dict:
     _authorize(x_jarvis_gateway_token)
     now = _now()
-    observed = (body.observed_at or datetime.now(timezone.utc)).isoformat()
+    observed = (body.observed_at or datetime.now(UTC)).isoformat()
     with _connect() as db:
         db.execute("""INSERT INTO security_posture
           (device_id,platform,firewall_enabled,antivirus_enabled,realtime_protection,

@@ -3,12 +3,17 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'wellbeing_page.dart';
 import 'device_health_page.dart';
-import 'llm_settings_page.dart';
-import 'llm_client.dart';
+import 'model_hub_page.dart';
+import 'device_pairing_page.dart';
+import 'windows_pairing_page.dart';
+import 'artemis_control_page.dart';
+import 'postiz_control_page.dart';
+import 'integration_setup_page.dart';
 import 'tools_page.dart';
 
 void main() => runApp(const JarvisApp());
@@ -127,6 +132,28 @@ class _ChatPageState extends State<ChatPage> {
   bool checking = false;
   bool backendOnline = false;
   String status = 'Connection not checked';
+
+  @override
+  void initState() {
+    super.initState();
+    _restorePairedBackend();
+  }
+
+  Future<void> _restorePairedBackend() async {
+    final storage = const FlutterSecureStorage();
+    final pairedUrl = await storage.read(key: 'jarvis.shared.backend');
+    if (pairedUrl != null && pairedUrl.trim().isNotEmpty && mounted) {
+      var restored = pairedUrl.trim();
+      while (restored.endsWith('/')) {
+        restored = restored.substring(0, restored.length - 1);
+      }
+      setState(() {
+        baseUrl = restored;
+        status = 'Restored paired Jarvis PC backend.';
+      });
+    }
+    await checkHealth();
+  }
 
   Uri? _endpoint(String path) {
     final parsed = Uri.tryParse(baseUrl.trim());
@@ -327,7 +354,7 @@ class _ChatPageState extends State<ChatPage> {
       try {
         final response = await http.get(
           uri,
-          headers: {'X-Jarvis-Remote-Token': token},
+          headers: {'X-Jarvis-Device-Token': token},
         ).timeout(const Duration(seconds: 8));
         if (response.statusCode < 200 || response.statusCode >= 300) {
           continue;
@@ -363,7 +390,11 @@ class _ChatPageState extends State<ChatPage> {
 
   Future<void> remoteControl() async {
     final messenger = ScaffoldMessenger.of(context);
-    final tokenController = TextEditingController();
+    final pairedToken = await const FlutterSecureStorage().read(key: 'jarvis.device.token');
+    if (pairedToken == null || pairedToken.isEmpty) {
+      messenger.showSnackBar(const SnackBar(content: Text('Pair this phone with your Windows Jarvis PC first.')));
+      return;
+    }
     final valueController = TextEditingController();
     String action = 'get_status';
     String targetPlatform = 'windows';
@@ -382,19 +413,11 @@ class _ChatPageState extends State<ChatPage> {
                 children: [
                   const Text('Connect to your paired Windows agent through the shared Jarvis backend. The Windows agent must be running.'),
                   const SizedBox(height: 12),
-                  TextField(
-                    controller: tokenController,
-                    obscureText: true,
-                    autocorrect: false,
-                    decoration: const InputDecoration(labelText: 'Private remote gateway token'),
-                  ),
-                  const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: targetPlatform,
                     decoration: const InputDecoration(labelText: 'Target device'),
                     items: const [
                       DropdownMenuItem(value: 'windows', child: Text('Windows PC')),
-                      DropdownMenuItem(value: 'android', child: Text('Android device via authorized ADB bridge')),
                     ],
                     onChanged: (value) => setDialogState(() => targetPlatform = value ?? 'windows'),
                   ),
@@ -442,11 +465,6 @@ class _ChatPageState extends State<ChatPage> {
             TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Close')),
             FilledButton(
               onPressed: () async {
-                final token = tokenController.text.trim();
-                if (token.isEmpty) {
-                  setDialogState(() => feedback = 'Enter the private gateway token.');
-                  return;
-                }
                 if (['type_text', 'press_key'].contains(action) && !confirmed) {
                   setDialogState(() => feedback = 'Confirm typing/key action first.');
                   return;
@@ -467,7 +485,7 @@ class _ChatPageState extends State<ChatPage> {
                     uri,
                     headers: {
                       'Content-Type': 'application/json',
-                      'X-Jarvis-Remote-Token': token,
+                      'X-Jarvis-Device-Token': pairedToken,
                     },
                     body: jsonEncode({
                       'target_platform': targetPlatform,
@@ -489,7 +507,7 @@ class _ChatPageState extends State<ChatPage> {
                     SnackBar(content: Text('Task queued: ${taskId ?? 'unknown'} · waiting for $targetPlatform agent')),
                   );
                   if (taskId != null && taskId.isNotEmpty) {
-                    _watchRemoteTask(taskId, token, messenger);
+                    _watchRemoteTask(taskId, pairedToken, messenger);
                   }
                 } catch (error) {
                   setDialogState(() => feedback = error.toString().replaceFirst('Exception: ', ''));
@@ -501,7 +519,6 @@ class _ChatPageState extends State<ChatPage> {
         ),
       ),
     );
-    tokenController.dispose();
     valueController.dispose();
   }
 
@@ -519,19 +536,19 @@ class _ChatPageState extends State<ChatPage> {
     _scrollToBottom();
 
     try {
-      // Prefer the locally configured LLM providers; use shared backend only when none are configured.
-      final localReply = await LlmClient.send(text);
-      if (localReply != null) {
-        if (mounted) setState(() => messages.add(ChatMessage(localReply, false)));
-        return;
-      }
       if (uri == null) {
-        throw Exception('No local LLM provider is configured and the shared backend URL is invalid. Configure a provider in LLM Settings or fix the backend URL.');
+        throw Exception('The shared PC backend URL is invalid. Pair this device with your Windows Jarvis PC or fix the backend URL.');
+      }
+      final chatHeaders = <String, String>{'Content-Type': 'application/json'};
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        final deviceToken = await const FlutterSecureStorage().read(key: 'jarvis.device.token');
+        if (deviceToken == null || deviceToken.isEmpty) throw Exception('Pair this phone with your Windows Jarvis PC first.');
+        chatHeaders['X-Jarvis-Device-Token'] = deviceToken;
       }
       final response = await http
           .post(
             uri,
-            headers: const {'Content-Type': 'application/json'},
+            headers: chatHeaders,
             body: jsonEncode({'message': text}),
           )
           .timeout(const Duration(seconds: 60));
@@ -636,11 +653,16 @@ class _ChatPageState extends State<ChatPage> {
       return;
     }
 
+    var normalized = result.trim();
+    while (normalized.endsWith('/')) {
+      normalized = normalized.substring(0, normalized.length - 1);
+    }
     setState(() {
-      baseUrl = result.replaceFirst(RegExp(r'/+$'), '');
+      baseUrl = normalized;
       status = 'Connection not checked';
       backendOnline = false;
     });
+    await const FlutterSecureStorage().write(key: 'jarvis.shared.backend', value: baseUrl);
     await checkHealth();
   }
 
@@ -649,6 +671,20 @@ class _ChatPageState extends State<ChatPage> {
     input.dispose();
     scroll.dispose();
     super.dispose();
+  }
+
+  Future<void> pairWithPc() async {
+    final paired = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const DevicePairingPage()),
+    );
+    if (paired == true && mounted) {
+      await _restorePairedBackend();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Phone connected to the shared Windows Jarvis backend.')),
+        );
+      }
+    }
   }
 
   Widget _launchTile({
@@ -721,10 +757,16 @@ class _ChatPageState extends State<ChatPage> {
     final desktop = width >= 980;
     final wide = width >= 650;
     final quickActions = <Widget>[
-      _launchTile(icon: Icons.desktop_windows_rounded, title: 'Control your PC', subtitle: 'Run approved remote actions', onTap: remoteControl, compact: !wide),
-      _launchTile(icon: Icons.phone_android_rounded, title: 'This phone', subtitle: 'Open settings and websites', onTap: phoneActions, compact: !wide),
+      if (defaultTargetPlatform == TargetPlatform.android) _launchTile(icon: Icons.desktop_windows_rounded, title: 'Control your PC', subtitle: 'Run approved remote actions', onTap: remoteControl, compact: !wide),
+      if (defaultTargetPlatform == TargetPlatform.android) _launchTile(icon: Icons.qr_code_scanner_rounded, title: 'Pair with PC', subtitle: 'Scan the Windows Jarvis QR code', onTap: pairWithPc, compact: !wide),
+      if (defaultTargetPlatform == TargetPlatform.windows) _launchTile(icon: Icons.qr_code_2_rounded, title: 'Pair phone', subtitle: 'Display a secure QR code for Android', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => WindowsPairingPage(backendUrl: baseUrl))), compact: !wide),
+      if (defaultTargetPlatform == TargetPlatform.android) _launchTile(icon: Icons.smartphone_rounded, title: 'ARTEMIS automation', subtitle: 'Control Android apps through the PC engine', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ArtemisControlPage(backendUrl: baseUrl))), compact: !wide),
+      if (defaultTargetPlatform == TargetPlatform.android) _launchTile(icon: Icons.phone_android_rounded, title: 'This phone', subtitle: 'Open settings and websites', onTap: phoneActions, compact: !wide),
       _launchTile(icon: Icons.hub_rounded, title: 'Connect apps', subtitle: 'Secure social account links', onTap: openSocialHub, compact: !wide),
-      _launchTile(icon: Icons.account_tree_rounded, title: 'AI models', subtitle: 'Providers, routing and keys', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LlmSettingsPage())), compact: !wide),
+      _launchTile(icon: Icons.campaign_rounded, title: 'Postiz social', subtitle: 'Manage channels, drafts and publishing', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PostizControlPage(backendUrl: baseUrl))), compact: !wide),
+      if (defaultTargetPlatform == TargetPlatform.windows) _launchTile(icon: Icons.tune_rounded, title: 'Integration setup', subtitle: 'Secure Postiz and ARTEMIS credentials on PC', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => IntegrationSetupPage(backendUrl: baseUrl))), compact: !wide),
+
+      _launchTile(icon: Icons.account_tree_rounded, title: 'Shared AI models', subtitle: 'PC provider vault and model sync', onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ModelHubPage(backendUrl: baseUrl, readOnly: defaultTargetPlatform == TargetPlatform.android))), compact: !wide),
     ];
 
     final tools = <Widget>[
@@ -901,7 +943,7 @@ class _ChatPageState extends State<ChatPage> {
               if (value == 'social') openSocialHub();
               if (value == 'wellbeing') Navigator.of(context).push(MaterialPageRoute(builder: (_) => WellbeingPage(backendUrl: baseUrl)));
               if (value == 'health') Navigator.of(context).push(MaterialPageRoute(builder: (_) => DeviceHealthPage(backendUrl: baseUrl)));
-              if (value == 'models') Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LlmSettingsPage()));
+              if (value == 'models') Navigator.of(context).push(MaterialPageRoute(builder: (_) => ModelHubPage(backendUrl: baseUrl, readOnly: defaultTargetPlatform == TargetPlatform.android)));
               if (value == 'tools') Navigator.of(context).push(MaterialPageRoute(builder: (_) => ToolsPage(backendUrl: baseUrl)));
               if (value == 'settings') settings();
             },
@@ -911,7 +953,7 @@ class _ChatPageState extends State<ChatPage> {
               PopupMenuItem(value: 'social', child: Text('Connect apps')),
               PopupMenuItem(value: 'wellbeing', child: Text('Wellbeing dashboard')),
               PopupMenuItem(value: 'health', child: Text('Device health')),
-              PopupMenuItem(value: 'models', child: Text('AI model settings')),
+              PopupMenuItem(value: 'models', child: Text('Shared AI models')),
               PopupMenuItem(value: 'tools', child: Text('Tools & Connectors')),
               PopupMenuItem(value: 'settings', child: Text('Backend settings')),
             ],
