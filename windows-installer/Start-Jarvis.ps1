@@ -2,35 +2,64 @@ $ErrorActionPreference = "Stop"
 $InstallRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $HostRoot = Join-Path $InstallRoot "host"
 $AppExe = Join-Path $InstallRoot "app\jarvis_personal_assistant.exe"
-if (-not (Test-Path $AppExe)) { throw "Jarvis desktop app missing. Run installer again." }
-if (-not (Test-Path (Join-Path $HostRoot ".venv\Scripts\python.exe"))) { throw "Backend missing. Run installer again." }
+$VenvPython = Join-Path $HostRoot ".venv\Scripts\python.exe"
 $hostScript = Join-Path $HostRoot "scripts\start-windows-host.ps1"
 $agentScript = Join-Path $HostRoot "scripts\start-windows-agent.ps1"
-$hostArgs = ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $hostScript)
-$agentArgs = ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $agentScript)
-Start-Process powershell.exe -WindowStyle Minimized -ArgumentList $hostArgs -WorkingDirectory $HostRoot
-Start-Sleep -Seconds 3
-Start-Process powershell.exe -WindowStyle Minimized -ArgumentList $agentArgs -WorkingDirectory $HostRoot
-# ARTEMIS is an optional, PC-hosted Android automation runtime. Its launcher
-# exits quickly when no Google API key has been configured in the PC vault.
+$logRoot = Join-Path $env:LOCALAPPDATA "Jarvis\logs"
+New-Item -ItemType Directory -Force -Path $logRoot | Out-Null
+
+if (-not (Test-Path $AppExe)) { throw "Jarvis desktop app is missing. Run Jarvis Setup again." }
+if (-not (Test-Path $VenvPython)) { throw "Jarvis backend Python environment is missing. Run Jarvis Setup again." }
+if (-not (Test-Path $hostScript)) { throw "Jarvis backend startup script is missing." }
+if (-not (Test-Path $agentScript)) { throw "Jarvis PC agent startup script is missing." }
+
+$powerShellExe = Join-Path $PSHOME "powershell.exe"
+if (-not (Test-Path $powerShellExe)) { $powerShellExe = "powershell.exe" }
+
+function Test-JarvisBackend {
+  try {
+    $response = Invoke-WebRequest -Uri "http://127.0.0.1:8000/health" -UseBasicParsing -TimeoutSec 2
+    return ($response.StatusCode -eq 200)
+  } catch { return $false }
+}
+
+if (-not (Test-JarvisBackend)) {
+  $hostArgs = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $hostScript + '"'
+  Start-Process -FilePath $powerShellExe -WindowStyle Hidden -ArgumentList $hostArgs -WorkingDirectory $HostRoot -RedirectStandardOutput (Join-Path $logRoot "backend.log") -RedirectStandardError (Join-Path $logRoot "backend-error.log")
+}
+
+# Avoid starting a second PC agent when Jarvis is already running.
+$agentRunning = $false
+try {
+  $agentRunning = [bool](Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction Stop |
+    Where-Object { $_.CommandLine -and $_.CommandLine -like "*start-windows-agent.ps1*" })
+} catch {
+  Add-Content -Path (Join-Path $logRoot "launcher.log") -Value "Could not inspect existing agent process: $_"
+}
+if (-not $agentRunning) {
+  $agentArgs = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $agentScript + '"'
+  Start-Process -FilePath $powerShellExe -WindowStyle Hidden -ArgumentList $agentArgs -WorkingDirectory $HostRoot -RedirectStandardOutput (Join-Path $logRoot "agent.log") -RedirectStandardError (Join-Path $logRoot "agent-error.log")
+}
+
+# ARTEMIS is optional and starts only when its local configuration is present.
 $artemisScript = Join-Path $HostRoot "scripts\start-artemis.ps1"
 if (Test-Path $artemisScript) {
-  $artemisArgs = ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $artemisScript)
-  Start-Process powershell.exe -WindowStyle Minimized -ArgumentList $artemisArgs -WorkingDirectory $HostRoot
+  $artemisConfig = Join-Path $HostRoot ".env"
+  $hasArtemisKey = (Test-Path $artemisConfig) -and ((Get-Content $artemisConfig -Raw) -match "(?m)^GOOGLE_API_KEY=.+$")
+  if ($hasArtemisKey) {
+    $artemisArgs = '-NoLogo -NoProfile -ExecutionPolicy Bypass -File "' + $artemisScript + '"'
+    Start-Process -FilePath $powerShellExe -WindowStyle Hidden -ArgumentList $artemisArgs -WorkingDirectory $HostRoot -RedirectStandardOutput (Join-Path $logRoot "artemis.log") -RedirectStandardError (Join-Path $logRoot "artemis-error.log")
+  }
 }
+
 $healthy = $false
-for ($i = 0; $i -lt 20; $i++) {
-  try { $response = Invoke-WebRequest -Uri "http://127.0.0.1:8000/health" -UseBasicParsing -TimeoutSec 2; if ($response.StatusCode -eq 200) { $healthy = $true; break } }
-  catch { Start-Sleep -Seconds 1 }
+for ($i = 0; $i -lt 45; $i++) {
+  if (Test-JarvisBackend) { $healthy = $true; break }
+  Start-Sleep -Seconds 1
 }
-if (-not $healthy) { Write-Warning "Backend did not respond yet. Check minimized PowerShell windows and host\.env." }
-# Launch the actual desktop window (not just the background services) and
-# request foreground activation so it does not remain behind the installer.
-$appProcess = Start-Process -FilePath $AppExe -WorkingDirectory (Split-Path -Parent $AppExe) -PassThru
-Start-Sleep -Seconds 2
-try {
-  $shell = New-Object -ComObject WScript.Shell
-  [void]$shell.AppActivate($appProcess.Id)
-} catch {
-  Write-Warning "Jarvis started, but Windows did not allow foreground activation. Use the Jarvis Start Menu shortcut."
+if (-not $healthy) {
+  throw "Jarvis backend did not become ready. Check $logRoot\backend-error.log and host\.env."
 }
+
+# Launch the actual Flutter desktop application. No PowerShell window is shown.
+Start-Process -FilePath $AppExe -WorkingDirectory (Split-Path -Parent $AppExe)
