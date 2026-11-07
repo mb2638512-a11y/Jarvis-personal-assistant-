@@ -9,5 +9,8 @@
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <AssemblyName>Jarvis</AssemblyName>
+    <Product>Jarvis Personal Assistant</Product>
+    <Description>Jarvis Windows desktop launcher</Description>
   </PropertyGroup>
 </Project>
