@@ -28,5 +28,5 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\App Paths\Jarvis.
 Name: "{autoprograms}\Jarvis"; Filename: "{app}\Jarvis.exe"; WorkingDir: "{app}"; IconFilename: "{app}\Jarvis.exe"
 Name: "{autodesktop}\Jarvis"; Filename: "{app}\Jarvis.exe"; WorkingDir: "{app}"; IconFilename: "{app}\Jarvis.exe"; Tasks: desktopicon
 [Run]
-Filename: "powershell.exe"; Parameters: "-NoLogo -NoProfile -ExecutionPolicy Bypass -File ""{tmp}\JarvisBundle\Install-Jarvis.ps1"" -InstallRoot ""{app}"""; StatusMsg: "Installing Jarvis desktop app and local services..."; Flags: runhidden waituntilterminated
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoLogo -NoProfile -ExecutionPolicy Bypass -File ""{tmp}\JarvisBundle\Install-Jarvis.ps1"" -InstallRoot ""{app}"""; WorkingDir: "{tmp}\JarvisBundle"; StatusMsg: "Installing Jarvis desktop app and local services..."; Flags: runhidden waituntilterminated
 Filename: "{app}\Jarvis.exe"; Description: "Launch Jarvis"; Flags: postinstall nowait skipifsilent
