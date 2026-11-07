@@ -73,6 +73,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -102,7 +105,7 @@ jobs:
         shell: pwsh
         run: |
           dotnet publish windows-launcher/JarvisLauncher.csproj --configuration Release --runtime win-x64 --self-contained true -p:PublishSingleFile=true -o build/launcher
-          if (!(Test-Path "build/launcher/JarvisLauncher.exe")) { throw "Native Jarvis launcher was not produced." }
+          if (!(Test-Path "build/launcher/Jarvis.exe")) { throw "Native Jarvis launcher was not produced." }
       - name: Stage self-contained Jarvis host and desktop app
         shell: pwsh
         run: |
@@ -120,7 +123,7 @@ jobs:
           Copy-Item "build/windows/x64/runner/Release/*" "$bundle/app" -Recurse -Force
           Copy-Item "windows-installer/Install-Jarvis.ps1" "$bundle/Install-Jarvis.ps1" -Force
           Copy-Item "windows-installer/Start-Jarvis.ps1" "$bundle/Start-Jarvis.ps1" -Force
-          Copy-Item "build/launcher/JarvisLauncher.exe" "$bundle/JarvisLauncher.exe" -Force
+          Copy-Item "build/launcher/Jarvis.exe" "$bundle/Jarvis.exe" -Force
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
       - name: Build Windows installer
@@ -133,8 +136,29 @@ jobs:
         shell: pwsh
         run: |
           if (!(Test-Path "build/installer-output/Jarvis-Setup.exe")) { throw "Jarvis installer missing." }
-          if (!(Test-Path "build/launcher/JarvisLauncher.exe")) { throw "Jarvis launcher missing." }
-          Get-Item "build/installer-output/Jarvis-Setup.exe", "build/launcher/JarvisLauncher.exe" | Select-Object Name,Length
+          if (!(Test-Path "build/launcher/Jarvis.exe")) { throw "Jarvis launcher missing." }
+          Get-Item "build/installer-output/Jarvis-Setup.exe", "build/launcher/Jarvis.exe" | Select-Object Name,Length
+      - name: Smoke-test installed Windows application
+        shell: pwsh
+        run: |
+          $installRoot = Join-Path $env:RUNNER_TEMP "Jarvis Smoke Test"
+          & "build/installer-output/Jarvis-Setup.exe" /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$installRoot"
+          if ($LASTEXITCODE -ne 0) { throw "Silent Jarvis installation failed with exit code $LASTEXITCODE." }
+          if (!(Test-Path (Join-Path $installRoot "Jarvis.exe"))) { throw "Installed Jarvis.exe is missing." }
+          if (!(Test-Path (Join-Path $installRoot "app/jarvis_personal_assistant.exe"))) { throw "Flutter desktop GUI executable is missing." }
+          $launcher = Start-Process -FilePath (Join-Path $installRoot "Jarvis.exe") -PassThru
+          $healthy = $false
+          for ($i = 0; $i -lt 75; $i++) {
+            try {
+              $response = Invoke-WebRequest -Uri "http://127.0.0.1:8000/health" -UseBasicParsing -TimeoutSec 2
+              if ($response.StatusCode -eq 200) { $healthy = $true; break }
+            } catch {}
+            Start-Sleep -Seconds 1
+          }
+          if (!$healthy) { throw "Installed Jarvis backend did not become healthy within 75 seconds." }
+          $gui = Get-Process -Name "jarvis_personal_assistant" -ErrorAction SilentlyContinue
+          if (!$gui) { throw "Jarvis backend started, but the actual desktop GUI process did not launch." }
+          Write-Host "PASS: installer, backend health endpoint, and Flutter desktop GUI launch verified."
       - name: Package portable Windows build
         shell: pwsh
         run: Compress-Archive -Path "build/installer-bundle/app/*" -DestinationPath "build/installer-output/Jarvis-Windows-x64.zip" -Force
