@@ -7,7 +7,7 @@ $AppRoot = Join-Path $InstallRoot "app"
 Write-Host "JARVIS WINDOWS INSTALLER" -ForegroundColor Cyan
 
 if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-  throw "Microsoft winget is required. Install/update App Installer from Microsoft Store, then run Jarvis-Setup.exe again."
+  throw "Microsoft winget is required. Install/update App Installer from Microsoft Store, then run Jarvis Setup again."
 }
 $pythonOk = $false
 if (Get-Command py -ErrorAction SilentlyContinue) {
@@ -16,18 +16,19 @@ if (Get-Command py -ErrorAction SilentlyContinue) {
 }
 if (-not $pythonOk) {
   winget install --id Python.Python.3.11 --exact --silent --accept-package-agreements --accept-source-agreements
-  if ($LASTEXITCODE -ne 0) { throw "Python 3.11 installation failed. Install Python 3.11 and rerun Jarvis-Setup.exe." }
+  if ($LASTEXITCODE -ne 0) { throw "Python 3.11 installation failed. Install Python 3.11 and rerun Jarvis Setup." }
 }
 if (-not (Get-Command py -ErrorAction SilentlyContinue)) {
-  throw "Python launcher was not found after installation. Restart Windows and rerun Jarvis-Setup.exe."
+  throw "Python launcher was not found after installation. Restart Windows and rerun Jarvis Setup."
 }
 
 New-Item -ItemType Directory -Force -Path $HostRoot,$AppRoot | Out-Null
 Copy-Item (Join-Path $BundleRoot "host\*") $HostRoot -Recurse -Force
-$envExample = Join-Path $BundleRoot "host\.env.example"
-if (Test-Path $envExample) { Copy-Item $envExample (Join-Path $HostRoot ".env.example") -Force }
 Copy-Item (Join-Path $BundleRoot "app\*") $AppRoot -Recurse -Force
 Copy-Item (Join-Path $BundleRoot "Start-Jarvis.ps1") (Join-Path $InstallRoot "Start-Jarvis.ps1") -Force
+$launcherSource = Join-Path $BundleRoot "JarvisLauncher.exe"
+if (-not (Test-Path $launcherSource)) { throw "Native Jarvis launcher is missing from the installer package." }
+Copy-Item $launcherSource (Join-Path $InstallRoot "JarvisLauncher.exe") -Force
 
 Push-Location $HostRoot
 try {
@@ -35,39 +36,12 @@ try {
   if ($LASTEXITCODE -ne 0) { throw "Backend dependency installation failed." }
 } finally { Pop-Location }
 
-# Desktop shortcut creation is handled by the Inno Setup "desktopicon" task,
-# allowing the user to opt in or out during installation. Start Menu entries
-# are registered by the installer and remain available either way.
-$launcher = Join-Path $InstallRoot "Start-Jarvis.ps1"
-$ws = New-Object -ComObject WScript.Shell
-
-# Also register Jarvis in the current user's Start Menu so it is easy to find
-# even if the desktop shortcut is not selected or the desktop is hidden.
-$startMenu = Join-Path ([Environment]::GetFolderPath("Programs")) "Jarvis"
-New-Item -ItemType Directory -Force -Path $startMenu | Out-Null
-$startMenuShortcut = $ws.CreateShortcut((Join-Path $startMenu "Jarvis.lnk"))
-$startMenuShortcut.TargetPath = "powershell.exe"
-$startMenuShortcut.Arguments = ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $launcher)
-$startMenuShortcut.WorkingDirectory = $InstallRoot
-$startMenuShortcut.IconLocation = Join-Path $AppRoot "jarvis_personal_assistant.exe"
-$startMenuShortcut.Save()
-
-# Add a second top-level Start Menu entry for fast Windows Search discovery.
-$rootMenuShortcut = $ws.CreateShortcut((Join-Path ([Environment]::GetFolderPath("Programs")) "Jarvis.lnk"))
-$rootMenuShortcut.TargetPath = "powershell.exe"
-$rootMenuShortcut.Arguments = ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $launcher)
-$rootMenuShortcut.WorkingDirectory = $InstallRoot
-$rootMenuShortcut.IconLocation = Join-Path $AppRoot "jarvis_personal_assistant.exe"
-$rootMenuShortcut.Save()
-
-# Register the executable name for Windows Run/Search-style app resolution.
-$appExe = Join-Path $AppRoot "jarvis_personal_assistant.exe"
-if (Test-Path $appExe) {
-  $appPathKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths\jarvis_personal_assistant.exe"
-  New-Item -Path $appPathKey -Force | Out-Null
-  Set-Item -Path $appPathKey -Value $appExe
-  New-ItemProperty -Path $appPathKey -Name "Path" -Value $AppRoot -PropertyType String -Force | Out-Null
-}
+# Register the native launcher for Windows Search and Run.
+$launcherExe = Join-Path $InstallRoot "JarvisLauncher.exe"
+$appPathKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths\Jarvis.exe"
+New-Item -Path $appPathKey -Force | Out-Null
+Set-Item -Path $appPathKey -Value $launcherExe
+New-ItemProperty -Path $appPathKey -Name "Path" -Value $InstallRoot -PropertyType String -Force | Out-Null
 
 Write-Host "Jarvis installed at $InstallRoot" -ForegroundColor Green
-Write-Host "Next: open Jarvis and add your AI provider in the PC Model Control screen. API keys are encrypted in the PC vault." -ForegroundColor Cyan
+Write-Host "Use the Jarvis shortcut in Start Menu to launch the desktop app." -ForegroundColor Cyan
