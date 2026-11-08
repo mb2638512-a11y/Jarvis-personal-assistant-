@@ -7,23 +7,29 @@ connected when the upstream daemon is absent.
 from __future__ import annotations
 
 import re
-import secrets
+import subprocess
+import sys
 import uuid
+from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlsplit
 
 import httpx
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
+from starlette.concurrency import run_in_threadpool
 
 from jarvis_api.config import settings
+from jarvis_api.integration_vault import get_integration_config
+from jarvis_api.remote_control import _auth as _remote_auth
 
 router = APIRouter(prefix="/api/artemis", tags=["ARTEMIS Android automation"])
 DEVICE_RE = re.compile(r"^[A-Za-z0-9._:-]{2,128}$")
 
 
 def _base_url() -> str:
-    raw = settings.artemis_base_url.strip().rstrip("/")
+    config = get_integration_config("artemis") or {}
+    raw = (config.get("base_url") or settings.artemis_base_url).strip().rstrip("/")
     if not raw:
         raise HTTPException(status_code=503, detail="ARTEMIS host is not configured.")
     parsed = urlsplit(raw)
@@ -35,21 +41,15 @@ def _base_url() -> str:
     return raw
 
 
-def _auth(token: str | None) -> None:
-    expected = settings.artemis_gateway_token.strip()
-    if not expected:
-        raise HTTPException(status_code=503, detail="ARTEMIS actions are disabled until JARVIS_ARTEMIS_GATEWAY_TOKEN is configured.")
-    if not token or not secrets.compare_digest(token, expected):
-        raise HTTPException(status_code=401, detail="Valid Jarvis ARTEMIS gateway token required.")
-
-
 def _configured() -> bool:
-    return bool(settings.artemis_base_url.strip() and settings.artemis_gateway_token.strip())
+    config = get_integration_config("artemis") or {}
+    return bool((config.get("base_url") or settings.artemis_base_url.strip()) and (config.get("gateway_token") or settings.artemis_gateway_token.strip()))
 
 
 async def _request(method: str, path: str, *, body: dict[str, Any] | None = None) -> Any:
     base = _base_url()
-    token = settings.artemis_gateway_token.strip()
+    config = get_integration_config("artemis") or {}
+    token = config.get("gateway_token") or settings.artemis_gateway_token.strip()
     try:
         async with httpx.AsyncClient(timeout=settings.artemis_timeout_seconds, follow_redirects=False) as client:
             response = await client.request(
@@ -92,7 +92,11 @@ class ArtemisTaskRequest(BaseModel):
 
 
 @router.get("/status")
-async def artemis_status() -> dict[str, Any]:
+async def artemis_status(
+    x_jarvis_remote_token: str | None = Header(default=None),
+    x_jarvis_device_token: str | None = Header(default=None),
+) -> dict[str, Any]:
+    _remote_auth(x_jarvis_remote_token, x_jarvis_device_token)
     if not _configured():
         return {
             "configured": False, "live_connected": False, "ready": False,
@@ -117,12 +121,45 @@ async def artemis_status() -> dict[str, Any]:
         }
 
 
+@router.post("/host/start")
+async def start_local_artemis_host(request: Request) -> dict[str, Any]:
+    peer = request.client.host if request.client else ""
+    if peer not in {"127.0.0.1", "::1", "localhost"}:
+        raise HTTPException(status_code=403, detail="ARTEMIS host startup is available only from the Windows PC.")
+    if sys.platform != "win32":
+        raise HTTPException(status_code=501, detail="Automatic ARTEMIS startup is currently supported on Windows only.")
+    root = Path(__file__).resolve().parent.parent
+    script = root / "scripts" / "start-artemis.ps1"
+    if not script.is_file():
+        raise HTTPException(status_code=503, detail="Jarvis ARTEMIS startup script is missing.")
+    data_dir = root / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    log_path = data_dir / "artemis-start.log"
+    log_handle = log_path.open("ab")
+    flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    try:
+        process = await run_in_threadpool(
+            subprocess.Popen,
+            ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)],
+            cwd=str(root),
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+            creationflags=flags,
+        )
+    except OSError as exc:
+        log_handle.close()
+        raise HTTPException(status_code=500, detail="Could not launch the ARTEMIS setup process.") from exc
+    log_handle.close()
+    return {"started": True, "pid": process.pid, "log": "data/artemis-start.log", "note": "First startup can take several minutes while dependencies and Android tools are installed."}
+
+
 @router.post("/tasks")
 async def submit_artemis_task(
     body: ArtemisTaskRequest,
-    x_jarvis_artemis_token: str | None = Header(default=None),
+    x_jarvis_remote_token: str | None = Header(default=None),
+    x_jarvis_device_token: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    _auth(x_jarvis_artemis_token)
+    _remote_auth(x_jarvis_remote_token, x_jarvis_device_token)
     if not body.user_confirmed:
         raise HTTPException(status_code=403, detail="Android automation requires explicit user confirmation.")
     task_id = str(uuid.uuid4())
@@ -145,9 +182,10 @@ async def submit_artemis_task(
 @router.get("/tasks/{task_id}")
 async def get_artemis_task(
     task_id: str,
-    x_jarvis_artemis_token: str | None = Header(default=None),
+    x_jarvis_remote_token: str | None = Header(default=None),
+    x_jarvis_device_token: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    _auth(x_jarvis_artemis_token)
+    _remote_auth(x_jarvis_remote_token, x_jarvis_device_token)
     try:
         parsed = str(uuid.UUID(task_id))
     except ValueError as exc:

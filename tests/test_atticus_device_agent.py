@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# ruff: noqa: I001 -- keep the test's importlib-based platform loader together
+
 import base64
 import importlib.util
 import sys

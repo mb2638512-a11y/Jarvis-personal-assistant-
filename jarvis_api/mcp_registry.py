@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import uuid
 from contextlib import closing
 from pathlib import Path
 from typing import Any
@@ -106,7 +107,7 @@ async def discover_tools(url: str) -> list[dict[str, Any]]:
             raise ValueError(str(payload["error"].get("message", "Tool discovery failed")))
         tools = payload.get("result", {}).get("tools", [])
         if not isinstance(tools, list):
-            raise ValueError("MCP tools/list returned an invalid tools collection.")
+            raise TypeError("MCP tools/list returned an invalid tools collection.")
         return [{
             "name": str(tool.get("name", ""))[:120],
             "description": str(tool.get("description", ""))[:500],
@@ -130,7 +131,6 @@ async def list_servers() -> dict[str, Any]:
 
 @router.post("/servers")
 async def add_server(body: ServerInput) -> dict[str, Any]:
-    import uuid
     try:
         tools = await discover_tools(body.url)
         status, error = "connected", ""

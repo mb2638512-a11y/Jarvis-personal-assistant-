@@ -11,20 +11,24 @@ import secrets
 from typing import Any, Literal
 
 import httpx
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import AnyHttpUrl, BaseModel, Field
 
 from jarvis_api.config import settings
+from jarvis_api.integration_vault import get_integration_config
+from jarvis_api.remote_control import _auth as _remote_auth
 
 router = APIRouter(prefix="/api/postiz", tags=["Postiz social publishing"])
 
 
 def _configured() -> bool:
-    return bool(settings.postiz_api_key.strip())
+    config = get_integration_config('postiz') or {}
+    return bool(config.get('api_key') or settings.postiz_api_key.strip())
 
 
 def _base_url() -> str:
-    value = settings.postiz_base_url.rstrip("/")
+    config = get_integration_config("postiz") or {}
+    value = (config.get("base_url") or settings.postiz_base_url).rstrip("/")
     local_http = value.startswith("http://") and value.split("/")[2].split(":")[0] in {
         "localhost",
         "127.0.0.1",
@@ -38,21 +42,29 @@ def _base_url() -> str:
 
 
 def _require_gateway_token(
+    request: Request,
     x_jarvis_postiz_token: str | None = Header(default=None),
+    x_jarvis_remote_token: str | None = Header(default=None),
+    x_jarvis_device_token: str | None = Header(default=None),
 ) -> None:
+    peer = request.client.host if request.client else ""
+    if peer in {"127.0.0.1", "::1", "localhost"}:
+        return
     expected = settings.postiz_gateway_token.strip()
-    if not expected:
+    if expected and x_jarvis_postiz_token and secrets.compare_digest(x_jarvis_postiz_token, expected):
+        return
+    if x_jarvis_remote_token or x_jarvis_device_token:
+        _remote_auth(x_jarvis_remote_token, x_jarvis_device_token)
+        return
+    if not expected and not settings.remote_gateway_token.strip():
         raise HTTPException(
             status_code=503,
-            detail="Postiz actions are disabled until JARVIS_POSTIZ_GATEWAY_TOKEN is configured.",
+            detail="Postiz actions are disabled until Jarvis administrator or paired-device auth is configured.",
         )
-    if not x_jarvis_postiz_token or not secrets.compare_digest(
-        x_jarvis_postiz_token, expected
-    ):
-        raise HTTPException(
-            status_code=401,
-            detail="Valid Jarvis Postiz gateway token required.",
-        )
+    raise HTTPException(
+        status_code=401,
+        detail="Jarvis PC administrator or paired-device authorization required.",
+    )
 
 
 async def _request(
@@ -67,6 +79,8 @@ async def _request(
             status_code=503,
             detail="Postiz is not configured on this server.",
         )
+    config = get_integration_config("postiz") or {}
+    api_key = config.get("api_key") or settings.postiz_api_key.strip()
     url = f"{_base_url()}/{path.lstrip('/')}"
     try:
         async with httpx.AsyncClient(
@@ -76,7 +90,7 @@ async def _request(
                 method,
                 url,
                 headers={
-                    "Authorization": settings.postiz_api_key,
+                    "Authorization": api_key,
                     "Accept": "application/json",
                 },
                 params=params,
@@ -130,7 +144,7 @@ class PostizUploadFromUrl(BaseModel):
 async def postiz_status() -> dict[str, Any]:
     return {
         "configured": _configured(),
-        "base_url_configured": bool(settings.postiz_base_url.strip()),
+        "base_url_configured": bool((get_integration_config("postiz") or {}).get("base_url") or settings.postiz_base_url.strip()),
         "gateway_auth_configured": bool(settings.postiz_gateway_token.strip()),
         "live_connection_verified": False,
         "note": "Run a protected channels request to verify the live Postiz connection.",
