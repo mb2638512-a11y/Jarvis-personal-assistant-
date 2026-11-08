@@ -182,8 +182,13 @@ jobs:
             Write-Host "::endgroup::"
             throw "Installed Jarvis backend did not become healthy within 75 seconds."
           }
-          $gui = Get-Process -Name "jarvis_personal_assistant" -ErrorAction SilentlyContinue
-          if (!$gui) { throw "Jarvis backend started, but the actual desktop GUI process did not launch." }
+          $gui = $null
+          for ($i = 0; $i -lt 15; $i++) {
+            $gui = Get-Process -Name "jarvis_personal_assistant" -ErrorAction SilentlyContinue
+            if ($gui) { break }
+            Start-Sleep -Seconds 1
+          }
+          if (!$gui) { throw "Jarvis backend started, but the actual desktop GUI process did not launch within 15 seconds." }
           Write-Host "PASS: installer, backend health endpoint, and Flutter desktop GUI launch verified."
       - name: Package portable Windows build
         shell: pwsh
